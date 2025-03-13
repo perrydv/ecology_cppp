@@ -104,7 +104,7 @@ model_spatial_ranef <- nimbleCode({
 })
 
 # 5. multi-species (https://doi.org/10.1111/2041-210X.12587)
-model_multispec <- nimbleCode({
+# model_multispec <- nimbleCode({
   
-})
+# })
 
