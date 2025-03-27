@@ -16,10 +16,23 @@ model_basic <- nimbleCode({
     
     for (j in 1:nVisits) {
       
+      # observed data
       y[i, j] ~ dbern(z[i] * p)
+      
+      # log deviance for observed data
+      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p) + 1e-6)  
+      
+      # posterior predictive replicated data
+      y_rep[i, j] ~ dbern(z[i] * p)
+      D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
       
     }
   }
+  
+  # total discrepancy measures
+  D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
+  D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  
   
 })
 
@@ -40,10 +53,22 @@ model_cov_occ <- nimbleCode({
     
     for (j in 1:nVisits) {
       
+      # observed data
       y[i, j] ~ dbern(z[i] * p)
+      
+      # log deviance for observed data
+      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p) + 1e-6) 
+      
+      # posterior predictive replicated data
+      y_rep[i, j] ~ dbern(z[i] * p)
+      D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
       
     }
   }
+  
+  # total discrepancy measures
+  D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
+  D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
   
 })
 
@@ -67,13 +92,26 @@ model_cov_occ_det <- nimbleCode({
     
     for (j in 1:nVisits) {
       
-      y[i, j] ~ dbern(z[i] * p[i, j])
-      
       # logit link - detection-level covariates
       p[i, j] <- ilogit(beta_o[1:ncov_p] %*% x_visit[i, j, 1:ncov_p])
       
+      # observed data
+      y[i, j] ~ dbern(z[i] * p[i, j])
+      
+      # log deviance for observed data
+      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p[i, j]) + 1e-6) 
+      
+      # posterior predictive replicated data
+      y_rep[i, j] ~ dbern(z[i] * p[i, j])
+      D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p[i, j]) + 1e-6)
+      
+      
     }
   }
+  
+  # total discrepancy measures
+  D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
+  D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
   
 })
 
@@ -97,10 +135,23 @@ model_spatial_ranef <- nimbleCode({
     
     for(j in 1:nVisits) {
       
+      # observed data
       y[i, j] ~ dbern(z[i] * p)
+      
+      # log deviance for observed data
+      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p) + 1e-6)  
+      
+      # posterior predictive replicated data
+      y_rep[i, j] ~ dbern(z[i] * p)
+      D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
       
     }
   }
+  
+  # total discrepancy measures
+  D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
+  D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  
 })
 
 # 5. multi-species (https://doi.org/10.1111/2041-210X.12587)
