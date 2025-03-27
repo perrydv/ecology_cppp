@@ -1,3 +1,9 @@
+
+####################
+# model variations #
+####################
+
+
 # 1. basic version
 # 2-3. covariates on detection and occupancy
 # 4. spatial random effect
@@ -19,19 +25,47 @@ model_basic <- nimbleCode({
       # observed data
       y[i, j] ~ dbern(z[i] * p)
       
-      # log deviance for observed data
-      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p) + 1e-6)  
+      # log deviance - observed data
+      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p) + 1e-6)
       
       # posterior predictive replicated data
       y_rep[i, j] ~ dbern(z[i] * p)
+      
+      # deviance - pp data
       D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
       
     }
+    
+    # expected values
+    y_exp[i, 1:nVisits] <- z[i] * p
+    
   }
   
-  # total discrepancy measures
+  ##############################
+  # total discrepancy measures #
+  ##############################
+  
+  # deviance
   D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
   D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  
+  # chi-squared
+  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
+                            y_exp[1:nSites, 1:nVisits])
+  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
+                            y_exp[1:nSites, 1:nVisits])
+  
+  # likelihood ratio
+  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  
+  # freeman tukey
+  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
   
   
 })
@@ -61,14 +95,42 @@ model_cov_occ <- nimbleCode({
       
       # posterior predictive replicated data
       y_rep[i, j] ~ dbern(z[i] * p)
+      
+      # deviance - pp data
       D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
       
     }
+    
+    # expected values
+    y_exp[i, 1:nVisits] <- z[i] * p
+    
   }
   
-  # total discrepancy measures
+  ##############################
+  # total discrepancy measures #
+  ##############################
+  
+  # deviance
   D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
   D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  
+  # chi-squared
+  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
+                            y_exp[1:nSites, 1:nVisits])
+  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
+                            y_exp[1:nSites, 1:nVisits])
+  
+  # likelihood ratio
+  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  
+  # freeman tukey
+  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
   
 })
 
@@ -103,15 +165,41 @@ model_cov_occ_det <- nimbleCode({
       
       # posterior predictive replicated data
       y_rep[i, j] ~ dbern(z[i] * p[i, j])
+      
+      # deviance - pp data
       D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p[i, j]) + 1e-6)
       
+      # expected values
+      y_exp[i, j] <- z[i] * p[i, j]
       
     }
   }
   
-  # total discrepancy measures
+  ##############################
+  # total discrepancy measures #
+  ##############################
+  
+  # deviance
   D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
   D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  
+  # chi-squared
+  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
+                            y_exp[1:nSites, 1:nVisits])
+  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
+                            y_exp[1:nSites, 1:nVisits])
+  
+  # likelihood ratio
+  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  
+  # freeman tukey
+  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
   
 })
 
@@ -143,14 +231,42 @@ model_spatial_ranef <- nimbleCode({
       
       # posterior predictive replicated data
       y_rep[i, j] ~ dbern(z[i] * p)
+      
+      # deviance - pp data
       D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
       
     }
+    
+    # expected values
+    y_exp[i, 1:nVisits] <- z[i] * p
+    
   }
   
-  # total discrepancy measures
+  ##############################
+  # total discrepancy measures #
+  ##############################
+  
+  # deviance
   D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
   D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  
+  # chi-squared
+  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
+                            y_exp[1:nSites, 1:nVisits])
+  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
+                            y_exp[1:nSites, 1:nVisits])
+  
+  # likelihood ratio
+  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  
+  # freeman tukey
+  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
+  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
+                                y_exp[1:nSites, 1:nVisits])
   
 })
 
@@ -159,3 +275,52 @@ model_spatial_ranef <- nimbleCode({
   
 # })
 
+
+######################################
+# functions for discrepancy measures #
+######################################
+
+calc_chi <- nimbleFunction(
+  
+  run = function(y = double(2), 
+                 y_exp = double(2))
+  {
+    returnType(double(0))
+    
+    # calculate chi squared discrepancy measure
+    chi_out <- (y - y_exp) ^ 2 / y
+    
+    return(sum(chi_out))
+  }
+)
+assign("calc_chi", calc_chi, envir = .GlobalEnv)
+
+calc_ratio <- nimbleFunction(
+  
+  run = function(y = double(2), 
+                 y_exp = double(2))
+  {
+    returnType(double(0))
+    
+    # calculate likelihood ratio discrepancy measure
+    ratio_out <- 2 * y * log(y / y_exp + 1e-6)
+    
+    return(sum(ratio_out))
+  }
+)
+assign("calc_ratio", calc_ratio, envir = .GlobalEnv)
+
+calc_tukey <- nimbleFunction(
+  
+  run = function(y = double(2), 
+                 y_exp = double(2))
+  {
+    returnType(double(0))
+    
+    # calculate freeman tukey discrepancy measure
+    tukey_out <- (sqrt(y) - sqrt(y_exp)) ^ 2
+    
+    return(sum(tukey_out))
+  }
+)
+assign("calc_tukey", calc_tukey, envir = .GlobalEnv)
