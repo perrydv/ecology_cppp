@@ -324,3 +324,132 @@ calc_tukey <- nimbleFunction(
   }
 )
 assign("calc_tukey", calc_tukey, envir = .GlobalEnv)
+
+##############################
+# functions for running MCMC #
+##############################
+
+fit_basic <- function(model_code, y, nSites, nVisits, 
+                      niter, nburnin, thin) {
+  
+  constants <- list(nSites = nSites, nVisits = nVisits)
+  
+  data <- list(y = y)
+  
+  inits <- function() list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
+                           z = pmin(rowSums(y), 1))  
+  
+  model <- nimbleModel(model_code, constants = constants, 
+                       data = data, inits = inits)
+  
+  compiled_model <- compileNimble(model)
+  
+  mcmc_conf <- configureMCMC(model, 
+                             monitors = c("psi", "p", "z",
+                                          "D_obs_total", "D_rep_total",
+                                          "chi_obs_total", "chi_rep_total",
+                                          "ratio_obs_total", "ratio_rep_total",
+                                          "tukey_obs_total", "tukey_rep_total"))
+  mcmc <- buildMCMC(mcmc_conf)
+  compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
+  
+  samples <- runMCMC(compiled_mcmc, niter = niter, 
+                     nburnin = nburnin, thin = thin)
+  
+  return(samples)
+}
+
+
+fit_cov_occ <- function(model_code, y, nSites, nVisits, ncov, 
+                        niter, nburnin, thin) {
+  
+  constants <- list(nSites = nSites, nVisits = nVisits)
+  
+  data <- list(y = y)
+  
+  inits <- function() list(beta = rnorm(ncov, 0, 1), p = runif(1, 0, 1), 
+                           z = pmin(rowSums(y), 1))  
+  
+  model <- nimbleModel(model_code, constants = constants, 
+                       data = data, inits = inits)
+  
+  compiled_model <- compileNimble(model)
+  
+  mcmc_conf <- configureMCMC(model, 
+                             monitors = c("beta", "p", "z",
+                                          "D_obs_total", "D_rep_total",
+                                          "chi_obs_total", "chi_rep_total",
+                                          "ratio_obs_total", "ratio_rep_total",
+                                          "tukey_obs_total", "tukey_rep_total"))
+  mcmc <- buildMCMC(mcmc_conf)
+  compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
+  
+  samples <- runMCMC(compiled_mcmc, niter = niter, 
+                     nburnin = nburnin, thin = thin)
+  
+  return(samples)
+}
+
+
+fit_cov_occ_det <- function(model_code, y, nSites, nVisits, ncov_o, ncov_p, 
+                            niter, nburnin, thin) {
+  
+  constants <- list(nSites = nSites, nVisits = nVisits)
+  
+  data <- list(y = y)
+  
+  inits <- function() list(beta_o = rnorm(ncov_o, 0, 1), 
+                           beta_p = rnorm(ncov_p, 0, 1), 
+                           z = pmin(rowSums(y), 1))  
+  
+  model <- nimbleModel(model_code, constants = constants, 
+                       data = data, inits = inits)
+  
+  compiled_model <- compileNimble(model)
+  
+  mcmc_conf <- configureMCMC(model, 
+                             monitors = c("beta", "p", "z",
+                                          "D_obs_total", "D_rep_total",
+                                          "chi_obs_total", "chi_rep_total",
+                                          "ratio_obs_total", "ratio_rep_total",
+                                          "tukey_obs_total", "tukey_rep_total"))
+  mcmc <- buildMCMC(mcmc_conf)
+  compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
+  
+  samples <- runMCMC(compiled_mcmc, niter = niter, 
+                     nburnin = nburnin, thin = thin)
+  
+  return(samples)
+}
+
+fit_spatial_ranef <- function(model_code, y, nSites, nVisits, nRegions, 
+                              niter, nburnin, thin) {
+  
+  constants <- list(nSites = nSites, nVisits = nVisits)
+  
+  data <- list(y = y)
+  
+  inits <- function() list(psi_mean = 0, psi_sd = 1, p = runif(1, 0, 1),
+                           psi_logit = logit(runif(nRegions, 0, 1)),
+                           z = pmin(rowSums(y), 1))  
+  
+  model <- nimbleModel(model_code, constants = constants, 
+                       data = data, inits = inits)
+  
+  compiled_model <- compileNimble(model)
+  
+  mcmc_conf <- configureMCMC(model, 
+                             monitors = c("beta", "p", "z",
+                                          "D_obs_total", "D_rep_total",
+                                          "chi_obs_total", "chi_rep_total",
+                                          "ratio_obs_total", "ratio_rep_total",
+                                          "tukey_obs_total", "tukey_rep_total"))
+  mcmc <- buildMCMC(mcmc_conf)
+  compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
+  
+  samples <- runMCMC(compiled_mcmc, niter = niter, 
+                     nburnin = nburnin, thin = thin)
+  
+  return(samples)
+}
+
