@@ -79,15 +79,12 @@ model_cov_occ <- nimbleCode({
   }
   
   # logit link - site-level covariates
-  psi[1:nSites] <- ilogit(inprod(beta[1:ncov], x_site[1:nSites, 1:ncov]))
+  psi[1:nSites] <- ilogit(x_site[1:nSites, 1:ncov] %*% beta[1:ncov])
   
   
   for (i in 1:nSites) {
     
     z[i] ~ dbern(psi[i])
-    
-    # logit link - site-level covariates
-    #psi[i] <- ilogit(inprod(beta[1:ncov], x_site[i, 1:ncov]))
     
     for (j in 1:nVisits) {
       
@@ -149,15 +146,15 @@ model_cov_occ_det <- nimbleCode({
   }
   
   # logit link - site-level covariates
-  psi[1:nSites] <- ilogit(inprod(beta_o[1:ncov_o], x_site[1:nSites, 1:ncov_o]))
+  psi[1:nSites] <- ilogit(x_site[1:nSites, 1:ncov_o] %*% beta_o[1:ncov_o])
   
   for (i in 1:nSites) {
     
     z[i] ~ dbern(psi[i])
     
     # logit link - detection-level covariates
-    p[i, 1:nVisits] <- ilogit(inprod(beta_o[1:ncov_p], 
-                                     x_visit[i, 1:nVisits, 1:ncov_p]))
+    p[i, 1:nVisits] <- ilogit(x_visit[i, 1:nVisits, 1:ncov_p] %*%
+                                beta_o[1:ncov_p])
     
     for (j in 1:nVisits) {
       
@@ -334,30 +331,29 @@ assign("calc_tukey", calc_tukey, envir = .GlobalEnv)
 # functions for running MCMC #
 ##############################
 
-fit_basic <- function(model_code, y, nSites, nVisits, 
+fit_basic <- function(model, compiled_model, 
                       niter, nburnin, thin) {
   
-  constants <- list(nSites = nSites, nVisits = nVisits)
+  # function for generating initial values
+  inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
+                            z = pmin(rowSums(y), 1)) 
   
-  data <- list(y = y)
+  # add initial values
+  compiled_model$setInits(inits(compiled_model$y))
   
-  inits <- function() list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
-                           z = pmin(rowSums(y), 1))  
-  
-  model <- nimbleModel(model_code, constants = constants, 
-                       data = data, inits = inits())
-  
-  compiled_model <- compileNimble(model)
-  
+  # configure MCMC
   mcmc_conf <- configureMCMC(model, 
                              monitors = c("psi", "p", "z",
                                           "D_obs_total", "D_rep_total",
                                           "chi_obs_total", "chi_rep_total",
                                           "ratio_obs_total", "ratio_rep_total",
                                           "tukey_obs_total", "tukey_rep_total"))
+  
+  # build and compile MCMC
   mcmc <- buildMCMC(mcmc_conf)
   compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
   
+  # generate samples
   samples <- runMCMC(compiled_mcmc, niter = niter, 
                      nburnin = nburnin, thin = thin)
   
@@ -365,31 +361,30 @@ fit_basic <- function(model_code, y, nSites, nVisits,
 }
 
 
-fit_cov_occ <- function(model_code, y, x_site, nSites, nVisits, ncov, 
+fit_cov_occ <- function(model, compiled_model, ncov, 
                         niter, nburnin, thin) {
   
-  constants <- list(nSites = nSites, nVisits = nVisits,
-                    ncov = ncov)
+  # function for generating initial values
+  inits <- function(y, ncov) list(beta = rnorm(ncov, 0, 1), 
+                                  p = runif(1, 0, 1), 
+                                  z = pmin(rowSums(y), 1))  
   
-  data <- list(y = y, x_site = x_site)
+  # add initial values
+  compiled_model$setInits(inits(compiled_model$y, ncov))
   
-  inits <- function() list(beta = rnorm(ncov, 0, 1), p = runif(1, 0, 1), 
-                           z = pmin(rowSums(y), 1))  
-  
-  model <- nimbleModel(model_code, constants = constants, 
-                       data = data, inits = inits())
-  
-  compiled_model <- compileNimble(model)
-  
+  # configure MCMC
   mcmc_conf <- configureMCMC(model, 
                              monitors = c("beta", "p", "z",
                                           "D_obs_total", "D_rep_total",
                                           "chi_obs_total", "chi_rep_total",
                                           "ratio_obs_total", "ratio_rep_total",
                                           "tukey_obs_total", "tukey_rep_total"))
+  
+  # build and compile MCMC
   mcmc <- buildMCMC(mcmc_conf)
   compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
   
+  # generate samples
   samples <- runMCMC(compiled_mcmc, niter = niter, 
                      nburnin = nburnin, thin = thin)
   
@@ -397,65 +392,60 @@ fit_cov_occ <- function(model_code, y, x_site, nSites, nVisits, ncov,
 }
 
 
-fit_cov_occ_det <- function(model_code, y, x_site, x_visit,
-                            nSites, nVisits, ncov_o, ncov_p, 
+fit_cov_occ_det <- function(model, compiled_model, ncov_o, ncov_p, 
                             niter, nburnin, thin) {
   
-  constants <- list(nSites = nSites, nVisits = nVisits,
-                    ncov_o = ncov_o, ncov_p = ncov_p)
+  # function for generating initial values
+  inits <- function(y, ncov_o, ncov_p) list(beta_o = rnorm(ncov_o, 0, 1), 
+                                            beta_p = rnorm(ncov_p, 0, 1), 
+                                            z = pmin(rowSums(y), 1))  
   
-  data <- list(y = y, x_site = x_site, x_visit = x_visit)
+  # add initial values
+  compiled_model$setInits(inits(compiled_model$y, ncov_o, ncov_p))
   
-  inits <- function() list(beta_o = rnorm(ncov_o, 0, 1), 
-                           beta_p = rnorm(ncov_p, 0, 1), 
-                           z = pmin(rowSums(y), 1))  
-  
-  model <- nimbleModel(model_code, constants = constants, 
-                       data = data, inits = inits())
-  
-  compiled_model <- compileNimble(model)
-  
+  # configure MCMC
   mcmc_conf <- configureMCMC(model, 
                              monitors = c("beta_o", "beta_p", "p", "z",
                                           "D_obs_total", "D_rep_total",
                                           "chi_obs_total", "chi_rep_total",
                                           "ratio_obs_total", "ratio_rep_total",
                                           "tukey_obs_total", "tukey_rep_total"))
+  # build and compile MCMC
   mcmc <- buildMCMC(mcmc_conf)
   compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
   
+  # generate samples
   samples <- runMCMC(compiled_mcmc, niter = niter, 
                      nburnin = nburnin, thin = thin)
   
   return(samples)
 }
 
-fit_spatial_ranef <- function(model_code, y, region, nSites, nVisits, nRegions, 
+fit_spatial_ranef <- function(model, compiled_model, region, nRegions,
                               niter, nburnin, thin) {
   
-  constants <- list(nSites = nSites, nVisits = nVisits, 
-                    nRegions = nRegions, region = region)
+  # function for generating initial values
+  inits <- function(y, nRegions) list(
+    psi_mean = 0, psi_sd = 1, p = runif(1, 0, 1),
+    psi_logit = logit(runif(nRegions, 0, 1)), z = pmin(rowSums(y), 1)
+  )  
   
-  data <- list(y = y)
+  # add initial values
+  compiled_model$setInits(inits(compiled_model$y, nRegions))
   
-  inits <- function() list(psi_mean = 0, psi_sd = 1, p = runif(1, 0, 1),
-                           psi_logit = logit(runif(nRegions, 0, 1)),
-                           z = pmin(rowSums(y), 1))  
-  
-  model <- nimbleModel(model_code, constants = constants, 
-                       data = data, inits = inits())
-  
-  compiled_model <- compileNimble(model)
-  
+  # configure MCMC
   mcmc_conf <- configureMCMC(model, 
                              monitors = c("psi_mean", "psi_sd", "p", "z",
                                           "D_obs_total", "D_rep_total",
                                           "chi_obs_total", "chi_rep_total",
                                           "ratio_obs_total", "ratio_rep_total",
                                           "tukey_obs_total", "tukey_rep_total"))
+  
+  # build and compile MCMC
   mcmc <- buildMCMC(mcmc_conf)
   compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
   
+  # generate samples
   samples <- runMCMC(compiled_mcmc, niter = niter, 
                      nburnin = nburnin, thin = thin)
   

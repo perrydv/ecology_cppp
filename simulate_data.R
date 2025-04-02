@@ -59,7 +59,7 @@ simulate_cov_occ_det <- function(params, x_site, x_visit, nSites, nVisits) {
     
     for (j in 1:nVisits) {
       
-      p[i, j] <- plogis(params$beta_d %*% x_visit[i, j, ])
+      p[i, j] <- plogis(params$beta_p %*% x_visit[i, j, ])
       
       y[i, j] <- rbinom(1, 1, z[i] * p[i, j])
       
