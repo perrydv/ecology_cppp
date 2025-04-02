@@ -65,6 +65,7 @@ for (i in 1:n_datasets) {
   )
   
 }
+saveRDS(p_values_basic, "pvalues/null/basic.rds")
 
 # model 2 - occupancy covariates
 p_values_cov_occ <- matrix(NA, nrow = n_datasets, ncol = 4)
@@ -75,8 +76,8 @@ for (i in 1:n_datasets) {
   # simulate data
   x_site <- matrix(NA, nrow = nSites, ncol = nCov_site + 1) # covariate data
   x_site[, 1] <- 1
-  for (i in 1:nCov_site) {
-    x_site[, i + 1] <- rnorm(nSites, 0, 1)
+  for (j in 1:nCov_site) {
+    x_site[, j + 1] <- rnorm(nSites, 0, 1)
   }
   
   y <- simulate_cov_occ(
@@ -86,7 +87,8 @@ for (i in 1:n_datasets) {
   
   
   # fit model
-  samples <- fit_cov_occ(model_cov_occ, y, nSites, nVisits, nCov_site + 1, 
+  samples <- fit_cov_occ(model_cov_occ, y, x_site,
+                         nSites, nVisits, nCov_site + 1, 
                          niter, nburnin, thin)
   
   # calculate p values
@@ -104,6 +106,7 @@ for (i in 1:n_datasets) {
   )
   
 }
+saveRDS(p_values_cov_occ, "pvalues/null/cov_occ.rds")
 
 # model 3 - occupancy and detection covariates
 p_values_cov_occ_det <- matrix(NA, nrow = n_datasets, ncol = 4)
@@ -114,8 +117,8 @@ for (i in 1:n_datasets) {
   # simulate data
   x_visit <- array(NA, dim = c(nSites, nVisits, nCov_detect + 1)) # covariate data
   x_visit[, , 1] <- 1
-  for (i in 1:nCov_detect) {
-    x_visit[, , i + 1] <- matrix(rnorm(nSites * nVisits, 0, 1), nrow = nSites)
+  for (j in 1:nCov_detect) {
+    x_visit[, , j + 1] <- matrix(rnorm(nSites * nVisits, 0, 1), nrow = nSites)
   }
   
   y <- simulate_cov_occ_det(
@@ -128,7 +131,8 @@ for (i in 1:n_datasets) {
   
   
   # fit model
-  samples <- fit_cov_occ_det(model_cov_occ_det, y, nSites, nVisits, 
+  samples <- fit_cov_occ_det(model_cov_occ_det, y, x_site, x_visit,
+                             nSites, nVisits, 
                              nCov_site + 1, nCov_detect + 1, 
                              niter, nburnin, thin)
   
@@ -147,6 +151,7 @@ for (i in 1:n_datasets) {
   )
   
 }
+saveRDS(p_values_cov_occ_det, "pvalues/null/cov_occ_det.rds")
 
 # model 4 - spatial ranef
 p_values_sp_ranef <- matrix(NA, nrow = n_datasets, ncol = 4)
@@ -169,7 +174,7 @@ for (i in 1:n_datasets) {
   
   
   # fit model
-  samples <- fit_spatial_ranef(model_spatial_ranef, y, 
+  samples <- fit_spatial_ranef(model_spatial_ranef, y, region,
                                nSites, nVisits, nRegions, 
                                niter, nburnin, thin)
   
@@ -188,6 +193,7 @@ for (i in 1:n_datasets) {
   )
   
 }
+saveRDS(p_values_sp_ranef, "pvalues/null/sp_ranef.rds")
 
 
 

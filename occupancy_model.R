@@ -13,12 +13,12 @@
 # 1. basic occupancy model
 model_basic <- nimbleCode({
   
-  psi ~ beta(1, 1)
-  p ~ beta(1, 1)
+  psi ~ dbeta(1, 1)
+  p ~ dbeta(1, 1)
   
   for (i in 1:nSites) {
     
-    z[i] ~ dbern(psi)
+    z[i] ~ dbern(psi) 
     
     for (j in 1:nVisits) {
       
@@ -26,13 +26,13 @@ model_basic <- nimbleCode({
       y[i, j] ~ dbern(z[i] * p)
       
       # log deviance - observed data
-      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p) + 1e-6)
+      D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p) + 1e-6)
       
       # posterior predictive replicated data
       y_rep[i, j] ~ dbern(z[i] * p)
       
       # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
+      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
       
     }
     
@@ -78,12 +78,16 @@ model_cov_occ <- nimbleCode({
     beta[c] ~ dunif(-10, 10)
   }
   
+  # logit link - site-level covariates
+  psi[1:nSites] <- ilogit(inprod(beta[1:ncov], x_site[1:nSites, 1:ncov]))
+  
+  
   for (i in 1:nSites) {
     
     z[i] ~ dbern(psi[i])
     
     # logit link - site-level covariates
-    psi[i] <- ilogit(beta[1:ncov] %*% x_site[i, 1:ncov])
+    #psi[i] <- ilogit(inprod(beta[1:ncov], x_site[i, 1:ncov]))
     
     for (j in 1:nVisits) {
       
@@ -91,13 +95,13 @@ model_cov_occ <- nimbleCode({
       y[i, j] ~ dbern(z[i] * p)
       
       # log deviance for observed data
-      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p) + 1e-6) 
+      D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p) + 1e-6) 
       
       # posterior predictive replicated data
       y_rep[i, j] ~ dbern(z[i] * p)
       
       # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
+      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
       
     }
     
@@ -137,7 +141,6 @@ model_cov_occ <- nimbleCode({
 # 3. covariates on occupancy and detection
 model_cov_occ_det <- nimbleCode({
   
-  p ~ dunif(0, 1)
   for (c in 1:ncov_o) {
     beta_o[c] ~ dunif(-10, 10)
   }
@@ -145,29 +148,30 @@ model_cov_occ_det <- nimbleCode({
     beta_p[c] ~ dunif(-10, 10)
   }
   
+  # logit link - site-level covariates
+  psi[1:nSites] <- ilogit(inprod(beta_o[1:ncov_o], x_site[1:nSites, 1:ncov_o]))
+  
   for (i in 1:nSites) {
     
     z[i] ~ dbern(psi[i])
     
-    # logit link - site-level covariates
-    psi[i] <- ilogit(beta_o[1:ncov_o] %*% x_site[i, 1:ncov_o])
+    # logit link - detection-level covariates
+    p[i, 1:nVisits] <- ilogit(inprod(beta_o[1:ncov_p], 
+                                     x_visit[i, 1:nVisits, 1:ncov_p]))
     
     for (j in 1:nVisits) {
-      
-      # logit link - detection-level covariates
-      p[i, j] <- ilogit(beta_o[1:ncov_p] %*% x_visit[i, j, 1:ncov_p])
       
       # observed data
       y[i, j] ~ dbern(z[i] * p[i, j])
       
       # log deviance for observed data
-      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p[i, j]) + 1e-6) 
+      D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p[i, j]) + 1e-6) 
       
       # posterior predictive replicated data
       y_rep[i, j] ~ dbern(z[i] * p[i, j])
       
       # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p[i, j]) + 1e-6)
+      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p[i, j]) + 1e-6)
       
       # expected values
       y_exp[i, j] <- z[i] * p[i, j]
@@ -210,10 +214,11 @@ model_spatial_ranef <- nimbleCode({
   psi_sd ~ dunif(0, 100)
   p ~ dbeta(1, 1)
   
+  psi[1:nRegions] <- ilogit(psi_logit[1:nRegions])
+  
   for(r in 1:nRegions){
     
     psi_logit[r] ~ dnorm(psi_mean, psi_sd)
-    psi[r] <- ilogit(psi_logit[r])
     
   }
   
@@ -227,13 +232,13 @@ model_spatial_ranef <- nimbleCode({
       y[i, j] ~ dbern(z[i] * p)
       
       # log deviance for observed data
-      D_obs[i, j] <- -2 * log(dbern(y[i, j], z[i] * p) + 1e-6)  
+      D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p) + 1e-6)  
       
       # posterior predictive replicated data
       y_rep[i, j] ~ dbern(z[i] * p)
       
       # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbern(y_rep[i, j], z[i] * p) + 1e-6)
+      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
       
     }
     
@@ -288,7 +293,7 @@ calc_chi <- nimbleFunction(
     returnType(double(0))
     
     # calculate chi squared discrepancy measure
-    chi_out <- (y - y_exp) ^ 2 / y
+    chi_out <- (y - y_exp) ^ 2 / (y + 1e-6)
     
     return(sum(chi_out))
   }
@@ -303,7 +308,7 @@ calc_ratio <- nimbleFunction(
     returnType(double(0))
     
     # calculate likelihood ratio discrepancy measure
-    ratio_out <- 2 * y * log(y / y_exp + 1e-6)
+    ratio_out <- 2 * y * log((y + 1e-6) / (y_exp + 1e-6))
     
     return(sum(ratio_out))
   }
@@ -340,7 +345,7 @@ fit_basic <- function(model_code, y, nSites, nVisits,
                            z = pmin(rowSums(y), 1))  
   
   model <- nimbleModel(model_code, constants = constants, 
-                       data = data, inits = inits)
+                       data = data, inits = inits())
   
   compiled_model <- compileNimble(model)
   
@@ -360,18 +365,19 @@ fit_basic <- function(model_code, y, nSites, nVisits,
 }
 
 
-fit_cov_occ <- function(model_code, y, nSites, nVisits, ncov, 
+fit_cov_occ <- function(model_code, y, x_site, nSites, nVisits, ncov, 
                         niter, nburnin, thin) {
   
-  constants <- list(nSites = nSites, nVisits = nVisits)
+  constants <- list(nSites = nSites, nVisits = nVisits,
+                    ncov = ncov)
   
-  data <- list(y = y)
+  data <- list(y = y, x_site = x_site)
   
   inits <- function() list(beta = rnorm(ncov, 0, 1), p = runif(1, 0, 1), 
                            z = pmin(rowSums(y), 1))  
   
   model <- nimbleModel(model_code, constants = constants, 
-                       data = data, inits = inits)
+                       data = data, inits = inits())
   
   compiled_model <- compileNimble(model)
   
@@ -391,24 +397,26 @@ fit_cov_occ <- function(model_code, y, nSites, nVisits, ncov,
 }
 
 
-fit_cov_occ_det <- function(model_code, y, nSites, nVisits, ncov_o, ncov_p, 
+fit_cov_occ_det <- function(model_code, y, x_site, x_visit,
+                            nSites, nVisits, ncov_o, ncov_p, 
                             niter, nburnin, thin) {
   
-  constants <- list(nSites = nSites, nVisits = nVisits)
+  constants <- list(nSites = nSites, nVisits = nVisits,
+                    ncov_o = ncov_o, ncov_p = ncov_p)
   
-  data <- list(y = y)
+  data <- list(y = y, x_site = x_site, x_visit = x_visit)
   
   inits <- function() list(beta_o = rnorm(ncov_o, 0, 1), 
                            beta_p = rnorm(ncov_p, 0, 1), 
                            z = pmin(rowSums(y), 1))  
   
   model <- nimbleModel(model_code, constants = constants, 
-                       data = data, inits = inits)
+                       data = data, inits = inits())
   
   compiled_model <- compileNimble(model)
   
   mcmc_conf <- configureMCMC(model, 
-                             monitors = c("beta", "p", "z",
+                             monitors = c("beta_o", "beta_p", "p", "z",
                                           "D_obs_total", "D_rep_total",
                                           "chi_obs_total", "chi_rep_total",
                                           "ratio_obs_total", "ratio_rep_total",
@@ -422,10 +430,11 @@ fit_cov_occ_det <- function(model_code, y, nSites, nVisits, ncov_o, ncov_p,
   return(samples)
 }
 
-fit_spatial_ranef <- function(model_code, y, nSites, nVisits, nRegions, 
+fit_spatial_ranef <- function(model_code, y, region, nSites, nVisits, nRegions, 
                               niter, nburnin, thin) {
   
-  constants <- list(nSites = nSites, nVisits = nVisits)
+  constants <- list(nSites = nSites, nVisits = nVisits, 
+                    nRegions = nRegions, region = region)
   
   data <- list(y = y)
   
@@ -434,12 +443,12 @@ fit_spatial_ranef <- function(model_code, y, nSites, nVisits, nRegions,
                            z = pmin(rowSums(y), 1))  
   
   model <- nimbleModel(model_code, constants = constants, 
-                       data = data, inits = inits)
+                       data = data, inits = inits())
   
   compiled_model <- compileNimble(model)
   
   mcmc_conf <- configureMCMC(model, 
-                             monitors = c("beta", "p", "z",
+                             monitors = c("psi_mean", "psi_sd", "p", "z",
                                           "D_obs_total", "D_rep_total",
                                           "chi_obs_total", "chi_rep_total",
                                           "ratio_obs_total", "ratio_rep_total",
