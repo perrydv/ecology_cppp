@@ -45,10 +45,6 @@ constants <- list(nSites = nSites, nVisits = nVisits)
 model <- nimbleModel(model_basic, constants = constants)
 compiled_model <- compileNimble(model)
 
-# add params to compiled model
-compiled_model$p <- p
-compiled_model$psi <- psi
-
 for (i in 1:n_datasets) {
   
   # simulate data
@@ -89,10 +85,6 @@ colnames(p_values_cov_occ) <- c("deviance", "chi_sq", "lik_ratio", "ftukey")
 constants <- list(nSites = nSites, nVisits = nVisits, ncov = nCov_site + 1)
 model <- nimbleModel(model_cov_occ, constants = constants)
 compiled_model <- compileNimble(model)
-
-# add params to compiled model
-compiled_model$beta <- runif(nCov_site + 1, -1, 1)
-compiled_model$p <- p
 
 for (i in 1:n_datasets) {
   
@@ -145,10 +137,6 @@ constants <- list(nSites = nSites, nVisits = nVisits,
                   ncov_o = nCov_site + 1, ncov_p = nCov_detect + 1)
 model <- nimbleModel(model_cov_occ_det, constants = constants)
 compiled_model <- compileNimble(model)
-
-# add params to compiled model
-compiled_model$beta_o <- runif(nCov_site + 1, -1, 1)
-compiled_model$beta_p <- runif(nCov_detect + 1, -1, 1)
 
 for (i in 1:n_datasets) {
   
@@ -216,10 +204,6 @@ constants <- list(nSites = nSites, nVisits = nVisits,
                   nRegions = nRegions, region = region)
 model <- nimbleModel(model_spatial_ranef, constants = constants)
 compiled_model <- compileNimble(model)
-
-# add params to compiled model
-compiled_model$beta_o <- runif(nCov_site + 1, -1, 1)
-compiled_model$beta_p <- runif(nCov_detect + 1, -1, 1)
 
 for (i in 1:n_datasets) {
   
