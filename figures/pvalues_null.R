@@ -50,11 +50,22 @@ discrepancy_labels <- c(
   "lik_ratio" = "likelihood ratio"
 )
 
+fill_labels <- c(
+  "no" = expression(y^{rep} ~ "|" ~ theta^L * "," ~ theta^T),
+  "yes" = expression(y^{rep} * theta^{L~","~rep} ~ "|" ~ theta^T)
+)
+
+
 plot_wlatent <- ggplot(pvalues, aes(x = p_value, fill = latent)) +
   geom_histogram() +
   scale_y_continuous(breaks = c(0, 50, 100)) +
   scale_x_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1),
                      labels = c("0", "0.25", "0.5", "0.75", "1")) +
+  scale_fill_manual(
+    values = c("no" = "#1f77b4",
+               "yes" = "#ff7f0e"),
+    labels = fill_labels
+  ) +
   facet_grid(model ~ discrepancy, labeller = labeller(
     model = model_labels,
     discrepancy = discrepancy_labels

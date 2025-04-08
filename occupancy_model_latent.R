@@ -34,12 +34,13 @@ model_basic_latent <- nimbleCode({
       y_rep[i, j] ~ dbern(z_rep[i] * p)
       
       # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z_rep[i] * p) + 1e-6)
       
     }
     
     # expected values
     y_exp[i, 1:nVisits] <- z[i] * p
+    y_exp_rep[i, 1:nVisits] <- z_rep[i] * p
     
   }
   
@@ -55,19 +56,19 @@ model_basic_latent <- nimbleCode({
   chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
   chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits],
-                            y_exp[1:nSites, 1:nVisits])
+                            y_exp_rep[1:nSites, 1:nVisits])
 
   # likelihood ratio
   ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
   ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits],
-                                y_exp[1:nSites, 1:nVisits])
+                                y_exp_rep[1:nSites, 1:nVisits])
 
   # freeman tukey
   tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
   tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits],
-                                y_exp[1:nSites, 1:nVisits])
+                                y_exp_rep[1:nSites, 1:nVisits])
 
   
 })
@@ -103,12 +104,13 @@ model_cov_occ_latent <- nimbleCode({
       y_rep[i, j] ~ dbern(z_rep[i] * p)
       
       # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z_rep[i] * p) + 1e-6)
       
     }
     
     # expected values
     y_exp[i, 1:nVisits] <- z[i] * p
+    y_exp_rep[i, 1:nVisits] <- z_rep[i] * p
     
   }
   
@@ -124,19 +126,19 @@ model_cov_occ_latent <- nimbleCode({
   chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
                             y_exp[1:nSites, 1:nVisits])
   chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
-                            y_exp[1:nSites, 1:nVisits])
+                            y_exp_rep[1:nSites, 1:nVisits])
   
   # likelihood ratio
   ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
                                 y_exp[1:nSites, 1:nVisits])
   ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
-                                y_exp[1:nSites, 1:nVisits])
+                                y_exp_rep[1:nSites, 1:nVisits])
   
   # freeman tukey
   tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
                                 y_exp[1:nSites, 1:nVisits])
   tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
-                                y_exp[1:nSites, 1:nVisits])
+                                y_exp_rep[1:nSites, 1:nVisits])
   
 })
 
@@ -176,10 +178,11 @@ model_cov_occ_det_latent <- nimbleCode({
       y_rep[i, j] ~ dbern(z_rep[i] * p[i, j])
       
       # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p[i, j]) + 1e-6)
+      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z_rep[i] * p[i, j]) + 1e-6)
       
       # expected values
       y_exp[i, j] <- z[i] * p[i, j]
+      y_exp_rep[i, j] <- z_rep[i] * p[i, j]
       
     }
   }
@@ -196,19 +199,19 @@ model_cov_occ_det_latent <- nimbleCode({
   chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
                             y_exp[1:nSites, 1:nVisits])
   chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
-                            y_exp[1:nSites, 1:nVisits])
+                            y_exp_rep[1:nSites, 1:nVisits])
   
   # likelihood ratio
   ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
                                 y_exp[1:nSites, 1:nVisits])
   ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
-                                y_exp[1:nSites, 1:nVisits])
+                                y_exp_rep[1:nSites, 1:nVisits])
   
   # freeman tukey
   tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
                                 y_exp[1:nSites, 1:nVisits])
   tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
-                                y_exp[1:nSites, 1:nVisits])
+                                y_exp_rep[1:nSites, 1:nVisits])
   
 })
 
@@ -249,12 +252,13 @@ model_spatial_ranef_latent <- nimbleCode({
       y_rep[i, j] ~ dbern(z_rep[i] * p)
       
       # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z_rep[i] * p) + 1e-6)
       
     }
     
     # expected values
     y_exp[i, 1:nVisits] <- z[i] * p
+    y_exp_rep[i, 1:nVisits] <- z_rep[i] * p
     
   }
   
@@ -270,19 +274,19 @@ model_spatial_ranef_latent <- nimbleCode({
   chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
                             y_exp[1:nSites, 1:nVisits])
   chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
-                            y_exp[1:nSites, 1:nVisits])
+                            y_exp_rep[1:nSites, 1:nVisits])
   
   # likelihood ratio
   ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
                                 y_exp[1:nSites, 1:nVisits])
   ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
-                                y_exp[1:nSites, 1:nVisits])
+                                y_exp_rep[1:nSites, 1:nVisits])
   
   # freeman tukey
   tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
                                 y_exp[1:nSites, 1:nVisits])
   tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
-                                y_exp[1:nSites, 1:nVisits])
+                                y_exp_rep[1:nSites, 1:nVisits])
   
 })
 

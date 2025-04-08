@@ -7,7 +7,6 @@
 # 1. basic version
 # 2-3. covariates on detection and occupancy
 # 4. spatial random effect
-# 5. multi-species?
 
 
 # 1. basic occupancy model
@@ -271,11 +270,6 @@ model_spatial_ranef <- nimbleCode({
                                 y_exp[1:nSites, 1:nVisits])
   
 })
-
-# 5. multi-species (https://doi.org/10.1111/2041-210X.12587)
-# model_multispec <- nimbleCode({
-  
-# })
 
 
 ######################################
