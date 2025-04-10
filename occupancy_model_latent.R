@@ -318,7 +318,8 @@ calc_ratio <- nimbleFunction(
     returnType(double(0))
     
     # calculate likelihood ratio discrepancy measure
-    ratio_out <- 2 * y * log((y + 1e-6) / (y_exp + 1e-6))
+    ratio_out <- 2 * (y * log((y + 1e-6) / (y_exp + 1e-6)) + (1 - y) * 
+                        log((1 - y + 1e-6)/(1 - y_exp + 1e-6)))
     
     return(sum(ratio_out))
   }

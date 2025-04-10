@@ -57,7 +57,7 @@ fill_labels <- c(
 
 
 plot_wlatent <- ggplot(pvalues, aes(x = p_value, fill = latent)) +
-  geom_histogram() +
+  geom_histogram(position = "identity", alpha = 0.5) +
   scale_y_continuous(breaks = c(0, 50, 100)) +
   scale_x_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1),
                      labels = c("0", "0.25", "0.5", "0.75", "1")) +
