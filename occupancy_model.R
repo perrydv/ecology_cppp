@@ -19,6 +19,9 @@ model_basic <- nimbleCode({
     
     z[i] ~ dbern(psi) 
     
+    # posterior predictive replicated data
+    z_rep[i] ~ dbern(psi)
+    
     for (j in 1:nVisits) {
       
       # observed data
@@ -27,16 +30,25 @@ model_basic <- nimbleCode({
       # log deviance - observed data
       D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p) + 1e-6)
       
-      # posterior predictive replicated data
+      # posterior predictive replicated data - conditioned on latent state
       y_rep[i, j] ~ dbern(z[i] * p)
       
-      # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      # posterior predictive replicated data - not conditioned on latent state
+      y_rep_latent[i, j] ~ dbern(z_rep[i] * p)
+      
+      # deviance - pp data - conditioned on latent state
+      D_rep[i, j] <- -2 * 
+        log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      
+      # deviance - pp data - not conditioned on latent state
+      D_rep_latent[i, j] <- -2 * 
+        log(dbinom(y_rep_latent[i, j], 1, z_rep[i] * p) + 1e-6)
       
     }
     
     # expected values
     y_exp[i, 1:nVisits] <- z[i] * p
+    y_exp_rep[i, 1:nVisits] <- z_rep[i] * p
     
   }
   
@@ -47,24 +59,31 @@ model_basic <- nimbleCode({
   # deviance
   D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
   D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  D_rep_latent_total <- sum(D_rep_latent[1:nSites, 1:nVisits])
 
   # chi-squared
   chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
   chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
+  chi_rep_latent_total <- calc_chi(y_rep_latent[1:nSites, 1:nVisits],
+                                   y_exp_rep[1:nSites, 1:nVisits])
 
   # likelihood ratio
   ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
   ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
+  ratio_rep_latent_total <- calc_ratio(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
 
   # freeman tukey
   tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
   tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
+  tukey_rep_latent_total <- calc_tukey(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
 
   
 })
@@ -85,6 +104,9 @@ model_cov_occ <- nimbleCode({
     
     z[i] ~ dbern(psi[i])
     
+    # posterior predictive replicated data
+    z_rep[i] ~ dbern(psi[i])
+    
     for (j in 1:nVisits) {
       
       # observed data
@@ -93,16 +115,25 @@ model_cov_occ <- nimbleCode({
       # log deviance for observed data
       D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p) + 1e-6) 
       
-      # posterior predictive replicated data
+      # posterior predictive replicated data - conditioned on latent state
       y_rep[i, j] ~ dbern(z[i] * p)
       
-      # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      # posterior predictive replicated data - not conditioned on latent state
+      y_rep_latent[i, j] ~ dbern(z_rep[i] * p)
+      
+      # deviance - pp data - conditioned on latent state
+      D_rep[i, j] <- -2 * 
+        log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      
+      # deviance - pp data - not conditioned on latent state
+      D_rep_latent[i, j] <- -2 * 
+        log(dbinom(y_rep_latent[i, j], 1, z_rep[i] * p) + 1e-6)
       
     }
     
     # expected values
     y_exp[i, 1:nVisits] <- z[i] * p
+    y_exp_rep[i, 1:nVisits] <- z_rep[i] * p
     
   }
   
@@ -113,24 +144,31 @@ model_cov_occ <- nimbleCode({
   # deviance
   D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
   D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  D_rep_latent_total <- sum(D_rep_latent[1:nSites, 1:nVisits])
   
   # chi-squared
-  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
+  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
-  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
+  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
+  chi_rep_latent_total <- calc_chi(y_rep_latent[1:nSites, 1:nVisits],
+                                   y_exp_rep[1:nSites, 1:nVisits])
   
   # likelihood ratio
-  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
+  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
-  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
+  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
+  ratio_rep_latent_total <- calc_ratio(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
   
   # freeman tukey
-  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
+  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
-  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
+  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
+  tukey_rep_latent_total <- calc_tukey(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
   
 })
 
@@ -151,6 +189,9 @@ model_cov_occ_det <- nimbleCode({
     
     z[i] ~ dbern(psi[i])
     
+    # posterior predictive replicated data
+    z_rep[i] ~ dbern(psi[i])
+    
     # logit link - detection-level covariates
     p[i, 1:nVisits] <- ilogit(x_visit[i, 1:nVisits, 1:ncov_p] %*%
                                 beta_o[1:ncov_p])
@@ -163,14 +204,23 @@ model_cov_occ_det <- nimbleCode({
       # log deviance for observed data
       D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p[i, j]) + 1e-6) 
       
-      # posterior predictive replicated data
+      # posterior predictive replicated data - conditioned on latent state
       y_rep[i, j] ~ dbern(z[i] * p[i, j])
       
-      # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p[i, j]) + 1e-6)
+      # posterior predictive replicated data - not conditioned on latent state
+      y_rep_latent[i, j] ~ dbern(z_rep[i] * p[i, j])
+      
+      # deviance - pp data - conditioned on latent state
+      D_rep[i, j] <- -2 * 
+        log(dbinom(y_rep[i, j], 1, z[i] * p[i, j]) + 1e-6)
+      
+      # deviance - pp data - not conditioned on latent state
+      D_rep_latent[i, j] <- -2 * 
+        log(dbinom(y_rep_latent[i, j], 1, z_rep[i] * p[i, j]) + 1e-6)
       
       # expected values
       y_exp[i, j] <- z[i] * p[i, j]
+      y_exp_rep[i, j] <- z_rep[i] * p[i, j]
       
     }
   }
@@ -182,24 +232,31 @@ model_cov_occ_det <- nimbleCode({
   # deviance
   D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
   D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  D_rep_latent_total <- sum(D_rep_latent[1:nSites, 1:nVisits])
   
   # chi-squared
-  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
+  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
-  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
+  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
+  chi_rep_latent_total <- calc_chi(y_rep_latent[1:nSites, 1:nVisits],
+                                   y_exp_rep[1:nSites, 1:nVisits])
   
   # likelihood ratio
-  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
+  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
-  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
+  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
+  ratio_rep_latent_total <- calc_ratio(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
   
   # freeman tukey
-  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
+  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
-  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
+  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
+  tukey_rep_latent_total <- calc_tukey(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
   
 })
 
@@ -216,11 +273,17 @@ model_spatial_ranef <- nimbleCode({
     
     psi_logit[r] ~ dnorm(psi_mean, psi_sd)
     
+    # posterior predictive replicated data
+    psi_logit_rep[r] ~ dnorm(psi_mean, psi_sd)
+    
   }
   
   for(i in 1:nSites) {
     
     z[i] ~ dbern(psi[region[i]])
+    
+    # posterior predictive replicated data
+    z_rep[i] ~ dbern(ilogit(psi_logit_rep[region[i]]))
     
     for(j in 1:nVisits) {
       
@@ -230,16 +293,25 @@ model_spatial_ranef <- nimbleCode({
       # log deviance for observed data
       D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p) + 1e-6)  
       
-      # posterior predictive replicated data
+      # posterior predictive replicated data - conditioned on latent state
       y_rep[i, j] ~ dbern(z[i] * p)
       
-      # deviance - pp data
-      D_rep[i, j] <- -2 * log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      # posterior predictive replicated data - not conditioned on latent state
+      y_rep_latent[i, j] ~ dbern(z_rep[i] * p)
+      
+      # deviance - pp data - conditioned on latent state
+      D_rep[i, j] <- -2 * 
+        log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      
+      # deviance - pp data - not conditioned on latent state
+      D_rep_latent[i, j] <- -2 * 
+        log(dbinom(y_rep_latent[i, j], 1, z_rep[i] * p) + 1e-6)
       
     }
     
     # expected values
     y_exp[i, 1:nVisits] <- z[i] * p
+    y_exp_rep[i, 1:nVisits] <- z_rep[i] * p
     
   }
   
@@ -250,24 +322,31 @@ model_spatial_ranef <- nimbleCode({
   # deviance
   D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
   D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  D_rep_latent_total <- sum(D_rep_latent[1:nSites, 1:nVisits])
   
   # chi-squared
-  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits], 
+  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
-  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits], 
+  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits],
                             y_exp[1:nSites, 1:nVisits])
+  chi_rep_latent_total <- calc_chi(y_rep_latent[1:nSites, 1:nVisits],
+                                   y_exp_rep[1:nSites, 1:nVisits])
   
   # likelihood ratio
-  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits], 
+  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
-  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits], 
+  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
+  ratio_rep_latent_total <- calc_ratio(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
   
   # freeman tukey
-  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits], 
+  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
-  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits], 
+  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits],
                                 y_exp[1:nSites, 1:nVisits])
+  tukey_rep_latent_total <- calc_tukey(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
   
 })
 
@@ -326,13 +405,14 @@ assign("calc_tukey", calc_tukey, envir = .GlobalEnv)
 # functions for running MCMC #
 ##############################
 
-fit_basic <- function(compiled_model, compiled_mcmc,
-                      niter, nburnin, thin) {
+fit_basic <- function(compiled_model, compiled_mcmc, niter, nburnin, thin) {
   
   # function for generating initial values
   inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
                             z = pmin(rowSums(y), 1),
-                            y_rep = matrix(NA, nrow(y), ncol(y))) 
+                            z_rep = rep(NA, nrow(y)),
+                            y_rep = matrix(NA, nrow(y), ncol(y)),
+                            y_rep_latent = matrix(NA, nrow(y), ncol(y))) 
   
   # add initial values
   compiled_model$setInits(inits(compiled_model$y))
@@ -345,14 +425,16 @@ fit_basic <- function(compiled_model, compiled_mcmc,
 }
 
 
-fit_cov_occ <- function(compiled_model, compiled_mcmc, ncov,
+fit_cov_occ <- function(compiled_model, compiled_mcmc, ncov, 
                         niter, nburnin, thin) {
   
   # function for generating initial values
   inits <- function(y, ncov) list(beta = rnorm(ncov, 0, 1), 
                                   p = runif(1, 0, 1), 
                                   z = pmin(rowSums(y), 1),
-                                  y_rep = matrix(NA, nrow(y), ncol(y)))  
+                                  z_rep = rep(NA, nrow(y)),
+                                  y_rep = matrix(NA, nrow(y), ncol(y)),
+                                  y_rep_latent = matrix(NA, nrow(y), ncol(y)))  
   
   # add initial values
   compiled_model$setInits(inits(compiled_model$y, ncov))
@@ -365,15 +447,18 @@ fit_cov_occ <- function(compiled_model, compiled_mcmc, ncov,
 }
 
 
-fit_cov_occ_det <- function(compiled_model, compiled_mcmc, ncov_o, ncov_p, 
-                            niter, nburnin, thin) {
+fit_cov_occ_det <- function(compiled_model, compiled_mcmc, ncov_o, 
+                            ncov_p, niter, nburnin, thin) {
   
   # function for generating initial values
   inits <- function(y, ncov_o, ncov_p) list(beta_o = rnorm(ncov_o, 0, 1), 
                                             beta_p = rnorm(ncov_p, 0, 1), 
+                                            z_rep = rep(NA, nrow(y)),
                                             z = pmin(rowSums(y), 1),
                                             y_rep = matrix(NA, nrow(y), 
-                                                           ncol(y)))  
+                                                           ncol(y)),
+                                            y_rep_latent = matrix(NA, nrow(y), 
+                                                                  ncol(y)))  
   
   # add initial values
   compiled_model$setInits(inits(compiled_model$y, ncov_o, ncov_p))
@@ -385,14 +470,16 @@ fit_cov_occ_det <- function(compiled_model, compiled_mcmc, ncov_o, ncov_p,
   return(samples)
 }
 
-fit_spatial_ranef <- function(compiled_model, compiled_mcmc, region, nRegions,
-                              niter, nburnin, thin) {
+fit_spatial_ranef <- function(compiled_model, compiled_mcmc, region,
+                              nRegions, niter, nburnin, thin) {
   
   # function for generating initial values
   inits <- function(y, nRegions) list(
     psi_mean = 0, psi_sd = 1, p = runif(1, 0, 1),
-    psi_logit = logit(runif(nRegions, 0, 1)), z = pmin(rowSums(y), 1),
-    y_rep = matrix(NA, nrow(y), ncol(y))
+    psi_logit = logit(runif(nRegions, 0, 1)), 
+    z = pmin(rowSums(y), 1), z_rep = rep(NA, nrow(y)),
+    y_rep = matrix(NA, nrow(y), ncol(y)),
+    y_rep_latent = matrix(NA, nrow(y), ncol(y))
   )  
   
   # add initial values
