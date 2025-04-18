@@ -90,3 +90,20 @@ simulate_spatial_ranef <- function(params, nRegions, region, nSites, nVisits) {
   
   return(y)
 }
+
+
+# beta-binomial
+simulate_betabinomial <- function(params, nSites, nVisits, rho) {
+  
+  y <- rep(NA, nSites)
+  
+  z <- rbinom(nSites, 1, params$psi)
+  
+  for (i in 1:nSites) {
+    
+    y[i] <- VGAM::rbetabinom(1, nVisits, z[i] * params$p, rho)
+    
+  }
+  
+  return(y)
+}
