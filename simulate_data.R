@@ -107,3 +107,128 @@ simulate_betabinomial <- function(params, nSites, nVisits, rho) {
   
   return(y)
 }
+
+### Model 6 - mixture on detection###
+
+# params requires 3 values 
+#   1. p1 - probability of detection for group 1
+#   2. p2 - probability of detection for group 2
+#   3. psi - occupancy probability
+# pMix is the mixutre probability between the two groups
+
+# You can choose to make detection probability change by site or visit. I think
+# changing by visit is unrealistic as I don't think the j'th visit to every site happens
+# on the same day for them to have the same p but the code is here if we want to 
+# explore it.
+
+simulate_det_pMix <- function(params, nSites, nVisits, pMix, hetSource = 'sites'){
+  
+  y <- matrix(NA, nrow = nSites, ncol = nVisits)
+  
+  z <- rbinom(nSites, 1, params$psi)
+  
+  if(hetSource == 'sites')
+    
+    p <- matrix(c(params$p1, params$p2)[rbinom(nSites, 1, pMix) + 1], nrow = nSites, ncol = nVisits)
+  
+  if(hetSource == 'visits')
+    
+    p <- matrix(c(params$p1, params$p2)[rbinom(nVisits, 1, pMix) + 1], nrow = nSites, ncol = nVisits, byrow = T)
+  
+  for (i in 1:nSites) {
+    
+    for (j in 1:nVisits){
+      
+      y[i,j] <- rbinom(1, 1, z[i] * p[i,j])
+      
+    }
+    
+  }
+  
+  return(y)
+}
+
+
+### Model 7 - Outliers in detection probability
+# params requires 2 values 
+#   1. p - probability of detection
+#   2. psi - occupancy probability
+# beta_p models the difference in detecgtion probability between the group and the outliers
+# nOutliers defines how many sites are outliers  
+
+simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers){
+  
+  y <- matrix(NA, nrow = nSites, ncol = nVisits)
+  
+  z <- rbinom(nSites, 1, params$psi)
+  
+  p <- rep(params$p,nSites)
+  
+  p[sample(1:nSites,nOutliers,replace = F)] <- 1/(1 + exp(-(log(params$p/(1 - params$p)) + beta_p)))
+  
+  for (i in 1:nSites) {
+    
+    y[i,] <- rbinom(nVisits, 1, z[i] * p[i])
+    
+  }
+  
+  return(y)
+  
+}
+
+### Model 8 - mixture on occupancy###
+
+# params requires 3 values 
+#   1. psi1 - Occupancy of region in group 1
+#   2. psi2 - Occupancy of region in group 2
+#   3. p - detection probability
+# pMix is the mixutre probability between the two groups
+
+simulate_occ_pMix <- function(params, nRegions, nSites, nVisits, pMix){
+  
+  y <- matrix(NA, nrow = nSites, ncol = nVisits)
+  
+  psi <- rep(c(params$psi1, params$psi2)[rbinom(nRegions, 1, pMix) + 1],each = nSites/nRegions)
+  
+  z <- rbinom(nSites, 1, psi)
+  
+  for (i in 1:nSites) {
+    
+    y[i,] <- rbinom(nVisits, 1, z[i] * params$p)
+    
+  }
+  
+  return(y)
+  
+}
+
+
+### Model 9 - Outliers in Occupancy
+# params requires 2 values 
+#   1. p - probability of detection
+#   2. psi - occupancy probability
+# beta_o models the difference in occupancy between the group and the outliers
+# nOutliers defines how many regions are outliers  
+
+simulate_det_outlier <- function(params, nRegions, nSites, nVisits, beta_o, nOutliers){
+  
+  y <- matrix(NA, nrow = nSites, ncol = nVisits)
+  
+  psi_region <- rep(params$psi,nRegions)
+  
+  psi_region[sample(1:nRegions,nOutliers,replace = F)] <- 1/(1 + exp(-(log(params$psi/(1 - params$psi)) + beta_o)))
+  
+  psi <- rep(psi_region, each = nSites/nRegions)
+  
+  z <- rbinom(nSites, 1, psi)
+  
+  for (i in 1:nSites) {
+    
+    y[i,] <- rbinom(nVisits, 1, z[i] * params$p)
+    
+  }
+  
+  return(y)
+  
+}
+
