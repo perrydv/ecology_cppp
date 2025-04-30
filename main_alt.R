@@ -291,3 +291,259 @@ saveRDS(samples_p, "posterior/alt/p_detectionMix.rds")
 saveRDS(samples_psi, "posterior/alt/psi_detectionMix.rds")
 
 
+#####################
+# outlier detection #
+#####################
+
+# parameter values
+p <- 0.2
+beta_p <- c(1, 3, 5)
+psi <- 0.6
+pOutlier <- 0.05 # percent of sites that are outliers
+
+# create df to store p values
+pvalues_detOut <- matrix(NA, nrow = n_datasets * length(beta_p), ncol = 9)
+colnames(pvalues_detOut) <- c("beta_p", "deviance", "chi_sq", "lik_ratio", 
+                              "ftukey", "deviance_latent", "chi_sq_latent", 
+                              "lik_ratio_latent", "ftukey_latent")
+
+# create df to store samples
+samples_p <- matrix(NA, nrow = n_datasets * length(beta_p), 
+                    ncol = (niter - nburnin) / thin + 2)
+colnames(samples_p) <- c("dataset", "beta_p", 1:((niter - nburnin) / thin))
+samples_psi <- matrix(NA, nrow = n_datasets * length(beta_p), 
+                      ncol = (niter - nburnin) / thin + 2)
+colnames(samples_psi) <- c("dataset", "beta_p", 1:((niter - nburnin) / thin))
+
+# create model instance and compile
+constants <- list(nSites = nSites, nVisits = nVisits)
+model <- nimbleModel(model_basic, constants = constants, 
+                     data = list(y = simulate_det_outlier_det(
+                       params = list(p = p, psi = psi), nSites, nVisits, 
+                       beta_p = 1, nOutliers = round(nSites * pOutlier))))
+compiled_model <- compileNimble(model)
+
+# configure MCMC
+mcmc_conf <- configureMCMC(
+  model, 
+  monitors = c("psi", "p", "z",
+               "D_obs_total", "D_rep_total", "D_rep_latent_total",
+               "chi_obs_total", "chi_rep_total", "chi_rep_latent_total",
+               "ratio_obs_total", "ratio_rep_total", "ratio_rep_latent_total",
+               "tukey_obs_total", "tukey_rep_total", "tukey_rep_latent_total")
+)
+
+# build MCMC
+mcmc <- buildMCMC(mcmc_conf)
+
+# compile mcmc
+compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
+
+for (j in 1:length(pMix)) {
+  for (i in 1:n_datasets) {
+    
+    # simulate data
+    y <- simulate_det_outlier_det(params = list(p = p, psi = psi), nSites, 
+                                  nVisits, beta_p = beta_p[j], 
+                                  nOutliers = round(nSites * pOutlier))
+    compiled_model$y <- y
+    
+    # fit model
+    samples <- fit_basic(compiled_model, compiled_mcmc,
+                         niter, nburnin, thin)
+    
+    # get p-value df index
+    index <- (j - 1) * n_datasets + i
+    
+    # save samples
+    samples_psi[index, ] <- c(i, beta_p[j], samples[, "psi"])
+    samples_p[index, ] <- c(i, beta_p[j], samples[, "p"])
+    
+    # save beta_p
+    pvalues_detOut[index, "beta_p"] <- beta_p[j]
+    
+    # calculate p values 
+    pvalues_detOut[index, c("deviance", "chi_sq", "lik_ratio", 
+                            "ftukey", "deviance_latent", "chi_sq_latent", 
+                            "lik_ratio_latent", 
+                            "ftukey_latent")] <- calc_pvalues(n_measures = 8,
+                                                              samples)
+  }
+}
+
+saveRDS(pvalues_detOut, "pvalues/alt/detectionOut.rds")
+saveRDS(samples_p, "posterior/alt/p_detectionOut.rds")
+saveRDS(samples_psi, "posterior/alt/psi_detectionOut.rds")
+
+
+#####################
+# mixture occupancy #
+#####################
+
+# parameter values
+psi1 <- 0.2
+psi2 <- 0.8
+pMix <- c(0.01, 0.2, 0.5)
+p <- 0.3
+
+# create df to store p values
+pvalues_occMix <- matrix(NA, nrow = n_datasets * length(pMix), ncol = 9)
+colnames(pvalues_occMix) <- c("pMix", "deviance", "chi_sq", "lik_ratio", 
+                              "ftukey", "deviance_latent", "chi_sq_latent", 
+                              "lik_ratio_latent", "ftukey_latent")
+
+# create df to store samples
+samples_p <- matrix(NA, nrow = n_datasets * length(pMix), 
+                    ncol = (niter - nburnin) / thin + 2)
+colnames(samples_p) <- c("dataset", "pMix", 1:((niter - nburnin) / thin))
+samples_psi <- matrix(NA, nrow = n_datasets * length(pMix), 
+                      ncol = (niter - nburnin) / thin + 2)
+colnames(samples_psi) <- c("dataset", "pMix", 1:((niter - nburnin) / thin))
+
+# create model instance and compile
+constants <- list(nSites = nSites, nVisits = nVisits)
+model <- nimbleModel(model_basic, constants = constants, 
+                     data = list(y = simulate_occ_pMix(
+                       params = list(psi1 = psi1, psi2 = psi2, p = p), 
+                       nRegions, nSites, nVisits, pMix = 0.1)))
+compiled_model <- compileNimble(model)
+
+# configure MCMC
+mcmc_conf <- configureMCMC(
+  model, 
+  monitors = c("psi", "p", "z",
+               "D_obs_total", "D_rep_total", "D_rep_latent_total",
+               "chi_obs_total", "chi_rep_total", "chi_rep_latent_total",
+               "ratio_obs_total", "ratio_rep_total", "ratio_rep_latent_total",
+               "tukey_obs_total", "tukey_rep_total", "tukey_rep_latent_total")
+)
+
+# build MCMC
+mcmc <- buildMCMC(mcmc_conf)
+
+# compile mcmc
+compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
+
+for (j in 1:length(pMix)) {
+  for (i in 1:n_datasets) {
+    
+    # simulate data
+    y <- simulate_occ_pMix(
+      params = list(psi1 = psi1, psi2 = psi2, p = p), 
+      nRegions, nSites, nVisits, pMix[j]
+    )
+    compiled_model$y <- y
+    
+    # fit model
+    samples <- fit_basic(compiled_model, compiled_mcmc,
+                         niter, nburnin, thin)
+    
+    # get p-value df index
+    index <- (j - 1) * n_datasets + i
+    
+    # save samples
+    samples_psi[index, ] <- c(i, pMix[j], samples[, "psi"])
+    samples_p[index, ] <- c(i, pMix[j], samples[, "p"])
+    
+    # save pMix
+    pvalues_occMix[index, "pMix"] <- pMix[j]
+    
+    # calculate p values 
+    pvalues_occMix[index, c("deviance", "chi_sq", "lik_ratio", 
+                            "ftukey", "deviance_latent", "chi_sq_latent", 
+                            "lik_ratio_latent", 
+                            "ftukey_latent")] <- calc_pvalues(n_measures = 8,
+                                                              samples)
+  }
+}
+
+saveRDS(pvalues_occMix, "pvalues/alt/occupancyMix.rds")
+saveRDS(samples_p, "posterior/alt/p_occupancyMix.rds")
+saveRDS(samples_psi, "posterior/alt/psi_occupancyMix.rds")
+
+
+#####################
+# outlier occupancy #
+#####################
+
+# parameter values
+p <- 0.2
+psi <- 0.3
+beta_o <- c(0.1, 0.5, 1)
+pOutlier <- 0.05 # percent of sites that are outliers
+
+# create df to store p values
+pvalues_occOut <- matrix(NA, nrow = n_datasets * length(beta_o), ncol = 9)
+colnames(pvalues_occOut) <- c("beta_o", "deviance", "chi_sq", "lik_ratio", 
+                              "ftukey", "deviance_latent", "chi_sq_latent", 
+                              "lik_ratio_latent", "ftukey_latent")
+
+# create df to store samples
+samples_p <- matrix(NA, nrow = n_datasets * length(beta_o), 
+                    ncol = (niter - nburnin) / thin + 2)
+colnames(samples_p) <- c("dataset", "beta_o", 1:((niter - nburnin) / thin))
+samples_psi <- matrix(NA, nrow = n_datasets * length(beta_o), 
+                      ncol = (niter - nburnin) / thin + 2)
+colnames(samples_psi) <- c("dataset", "beta_o", 1:((niter - nburnin) / thin))
+
+# create model instance and compile
+constants <- list(nSites = nSites, nVisits = nVisits)
+model <- nimbleModel(model_basic, constants = constants, 
+                     data = list(y = simulate_det_outlier_occ(
+                       params = list(p = p, psi = psi), 
+                       nRegions, nSites, nVisits, beta_o = 0.1,
+                       nOutliers = pOutlier * nRegions)))
+compiled_model <- compileNimble(model)
+
+# configure MCMC
+mcmc_conf <- configureMCMC(
+  model, 
+  monitors = c("psi", "p", "z",
+               "D_obs_total", "D_rep_total", "D_rep_latent_total",
+               "chi_obs_total", "chi_rep_total", "chi_rep_latent_total",
+               "ratio_obs_total", "ratio_rep_total", "ratio_rep_latent_total",
+               "tukey_obs_total", "tukey_rep_total", "tukey_rep_latent_total")
+)
+
+# build MCMC
+mcmc <- buildMCMC(mcmc_conf)
+
+# compile mcmc
+compiled_mcmc <- compileNimble(mcmc, project = compiled_model)
+
+for (j in 1:length(beta_o)) {
+  for (i in 1:n_datasets) {
+    
+    # simulate data
+    y <- simulate_det_outlier_occ(
+      params = list(p = p, psi = psi), 
+      nRegions, nSites, nVisits, beta_o = beta_o[j],
+      nOutliers = pOutlier * nRegions)
+    compiled_model$y <- y
+    
+    # fit model
+    samples <- fit_basic(compiled_model, compiled_mcmc,
+                         niter, nburnin, thin)
+    
+    # get p-value df index
+    index <- (j - 1) * n_datasets + i
+    
+    # save samples
+    samples_psi[index, ] <- c(i, beta_o[j], samples[, "psi"])
+    samples_p[index, ] <- c(i, beta_o[j], samples[, "p"])
+    
+    # save beta_o
+    pvalues_occOut[index, "beta_o"] <- beta_o[j]
+    
+    # calculate p values 
+    pvalues_occOut[index, c("deviance", "chi_sq", "lik_ratio", 
+                            "ftukey", "deviance_latent", "chi_sq_latent", 
+                            "lik_ratio_latent", 
+                            "ftukey_latent")] <- calc_pvalues(n_measures = 8,
+                                                              samples)
+  }
+}
+
+saveRDS(pvalues_occOut, "pvalues/alt/occupancyOut.rds")
+saveRDS(samples_p, "posterior/alt/p_occupancyOut.rds")
+saveRDS(samples_psi, "posterior/alt/psi_occupancyOut.rds")

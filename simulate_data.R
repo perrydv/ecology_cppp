@@ -186,7 +186,8 @@ simulate_det_pMix <- function(params, nSites, nVisits,
 # beta_p models the difference in detection probability between the group and the outliers
 # nOutliers defines how many sites are outliers  
 
-simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers) {
+simulate_det_outlier_det <- function(params, nSites, nVisits, 
+                                     beta_p, nOutliers) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
@@ -210,8 +211,8 @@ simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers) {
 ### Model 8 - mixture on occupancy###
 
 # params requires 3 values 
-#   1. psi1 - Occupancy of region in group 1
-#   2. psi2 - Occupancy of region in group 2
+#   1. psi1 - Occupancy of site in group 1
+#   2. psi2 - Occupancy of site in group 2
 #   3. p - detection probability
 # pMix is the mixture probability between the two groups
 
@@ -242,8 +243,8 @@ simulate_occ_pMix <- function(params, nRegions, nSites, nVisits, pMix) {
 # beta_o models the difference in occupancy between the group and the outliers
 # nOutliers defines how many regions are outliers  
 
-simulate_det_outlier <- function(params, nRegions, nSites, 
-                                 nVisits, beta_o, nOutliers) {
+simulate_det_outlier_occ <- function(params, nRegions, nSites, 
+                                     nVisits, beta_o, nOutliers) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
