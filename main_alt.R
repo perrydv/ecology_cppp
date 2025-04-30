@@ -192,8 +192,7 @@ for (j in 1:length(rho)) {
     
     # calculate p values
     pvalues_betabin[index, c("deviance", "chi_sq", "lik_ratio", 
-                             "ftukey", "deviance_latent", 
-                             "chi_sq_latent", 
+                             "ftukey", "deviance_latent", "chi_sq_latent", 
                              "lik_ratio_latent", 
                              "ftukey_latent")] <- calc_pvalues(n_measures = 8,
                                                                samples)
@@ -276,20 +275,19 @@ for (j in 1:length(pMix)) {
     samples_p[index, ] <- c(i, pMix[j], samples[, "p"])
     
     # save pMix
-    pvalues_betabin[index, "pMix"] <- pMix[j]
+    pvalues_detMix[index, "pMix"] <- pMix[j]
     
     # calculate p values 
-    pvalues_betabin[index, c("deviance", "chi_sq", "lik_ratio", 
-                             "ftukey", "deviance_latent", 
-                             "chi_sq_latent", 
-                             "lik_ratio_latent", 
-                             "ftukey_latent")] <- calc_pvalues(n_measures = 8,
-                                                               samples)
+    pvalues_detMix[index, c("deviance", "chi_sq", "lik_ratio", 
+                            "ftukey", "deviance_latent", "chi_sq_latent", 
+                            "lik_ratio_latent", 
+                            "ftukey_latent")] <- calc_pvalues(n_measures = 8,
+                                                              samples)
   }
 }
 
-saveRDS(pvalues_betabin, "pvalues/alt/betabinom.rds")
-saveRDS(samples_p, "posterior/alt/p_betabinom.rds")
-saveRDS(samples_psi, "posterior/alt/psi_betabinom.rds")
+saveRDS(pvalues_detMix, "pvalues/alt/detectionMix.rds")
+saveRDS(samples_p, "posterior/alt/p_detectionMix.rds")
+saveRDS(samples_psi, "posterior/alt/psi_detectionMix.rds")
 
 
