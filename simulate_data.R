@@ -1,5 +1,9 @@
+### Model 1 - basic model ###
 
-# model 1
+# params requires 2 values 
+#   1. psi - Occupancy probability
+#   2. p - detection probability
+
 simulate_basic <- function(params, nSites, nVisits) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
@@ -15,7 +19,12 @@ simulate_basic <- function(params, nSites, nVisits) {
   return(y)
 }
 
-# model 2
+### Model 2 - occupancy covariates ###
+
+# params requires 2 values 
+#   1. beta - covariate coefficients on occupancy
+#   2. p - detection probability
+# x_site is the site-level covariate data
 simulate_cov_occ <- function(params, x_site, nSites, nVisits) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
@@ -39,7 +48,13 @@ simulate_cov_occ <- function(params, x_site, nSites, nVisits) {
   
 } 
 
-# model 3
+### Model 3 - occupancy & detection covariates ###
+
+# params requires 2 values 
+#   1. beta_o - covariate coefficients on occupancy
+#   2. beta_p - covariate coefficients on detection
+# x_site is the site-level covariate data
+# x_visit is the detection-level covariate data
 simulate_cov_occ_det <- function(params, x_site, x_visit, nSites, nVisits) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
@@ -71,7 +86,13 @@ simulate_cov_occ_det <- function(params, x_site, x_visit, nSites, nVisits) {
   
 }
 
-# model 4
+### Model 4 - non-independent sites ###
+
+# params requires 3 values 
+#   1. psi_mean - mean psi across regions
+#   2. psi_sd - sd psi across regions
+#   3. p - probability of detection
+# region is a vector of length nSites, indicating the region for each site
 simulate_spatial_ranef <- function(params, nRegions, region, nSites, nVisits) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
@@ -92,7 +113,13 @@ simulate_spatial_ranef <- function(params, nRegions, region, nSites, nVisits) {
 }
 
 
-# beta-binomial
+### Model 4 - beta-binomial ###
+
+# params requires 2 values 
+#   1. psi - occupancy probability
+#   2. p - sd psi across regions
+# rho is the correlation paramter on the interval [0, 1); 
+# (0 corresponds to the binnomial distribution)
 simulate_betabinomial <- function(params, nSites, nVisits, rho) {
   
   y <- rep(NA, nSites)
@@ -114,14 +141,15 @@ simulate_betabinomial <- function(params, nSites, nVisits, rho) {
 #   1. p1 - probability of detection for group 1
 #   2. p2 - probability of detection for group 2
 #   3. psi - occupancy probability
-# pMix is the mixutre probability between the two groups
+# pMix is the mixture probability between the two groups
 
 # You can choose to make detection probability change by site or visit. I think
 # changing by visit is unrealistic as I don't think the j'th visit to every site happens
 # on the same day for them to have the same p but the code is here if we want to 
 # explore it.
 
-simulate_det_pMix <- function(params, nSites, nVisits, pMix, hetSource = 'sites'){
+simulate_det_pMix <- function(params, nSites, nVisits, 
+                              pMix, hetSource = 'sites'){
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
@@ -129,11 +157,13 @@ simulate_det_pMix <- function(params, nSites, nVisits, pMix, hetSource = 'sites'
   
   if(hetSource == 'sites')
     
-    p <- matrix(c(params$p1, params$p2)[rbinom(nSites, 1, pMix) + 1], nrow = nSites, ncol = nVisits)
+    p <- matrix(c(params$p1, params$p2)[rbinom(nSites, 1, pMix) + 1], 
+                nrow = nSites, ncol = nVisits)
   
   if(hetSource == 'visits')
     
-    p <- matrix(c(params$p1, params$p2)[rbinom(nVisits, 1, pMix) + 1], nrow = nSites, ncol = nVisits, byrow = T)
+    p <- matrix(c(params$p1, params$p2)[rbinom(nVisits, 1, pMix) + 1], 
+                nrow = nSites, ncol = nVisits, byrow = T)
   
   for (i in 1:nSites) {
     
@@ -153,7 +183,7 @@ simulate_det_pMix <- function(params, nSites, nVisits, pMix, hetSource = 'sites'
 # params requires 2 values 
 #   1. p - probability of detection
 #   2. psi - occupancy probability
-# beta_p models the difference in detecgtion probability between the group and the outliers
+# beta_p models the difference in detection probability between the group and the outliers
 # nOutliers defines how many sites are outliers  
 
 simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers){
@@ -162,9 +192,10 @@ simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers){
   
   z <- rbinom(nSites, 1, params$psi)
   
-  p <- rep(params$p,nSites)
+  p <- rep(params$p, nSites)
   
-  p[sample(1:nSites,nOutliers,replace = F)] <- 1/(1 + exp(-(log(params$p/(1 - params$p)) + beta_p)))
+  p[sample(1:nSites, nOutliers, replace = F)] <- 1 / 
+    (1 + exp(-(log(params$p / (1 - params$p)) + beta_p)))
   
   for (i in 1:nSites) {
     
@@ -182,13 +213,14 @@ simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers){
 #   1. psi1 - Occupancy of region in group 1
 #   2. psi2 - Occupancy of region in group 2
 #   3. p - detection probability
-# pMix is the mixutre probability between the two groups
+# pMix is the mixture probability between the two groups
 
 simulate_occ_pMix <- function(params, nRegions, nSites, nVisits, pMix){
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
-  psi <- rep(c(params$psi1, params$psi2)[rbinom(nRegions, 1, pMix) + 1],each = nSites/nRegions)
+  psi <- rep(c(params$psi1, params$psi2)[rbinom(nRegions, 1, pMix) + 1],
+             each = nSites / nRegions)
   
   z <- rbinom(nSites, 1, psi)
   
@@ -210,13 +242,15 @@ simulate_occ_pMix <- function(params, nRegions, nSites, nVisits, pMix){
 # beta_o models the difference in occupancy between the group and the outliers
 # nOutliers defines how many regions are outliers  
 
-simulate_det_outlier <- function(params, nRegions, nSites, nVisits, beta_o, nOutliers){
+simulate_det_outlier <- function(params, nRegions, nSites, 
+                                 nVisits, beta_o, nOutliers){
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
   psi_region <- rep(params$psi,nRegions)
   
-  psi_region[sample(1:nRegions,nOutliers,replace = F)] <- 1/(1 + exp(-(log(params$psi/(1 - params$psi)) + beta_o)))
+  psi_region[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
+    (1 + exp(-(log(params$psi / (1 - params$psi)) + beta_o)))
   
   psi <- rep(psi_region, each = nSites/nRegions)
   

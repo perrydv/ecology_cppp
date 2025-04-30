@@ -69,3 +69,42 @@ final_rho_plot <- plot_rho0.1 + plot_rho0.5 + plot_rho0.9 +
   plot_layout(nrow = 1)
 ggsave("figures/modelbreak_mechanism_betabin.png", dpi = 400, 
        width = 7, height = 3)
+
+
+# mixture on detection (heterogeneity across sites)
+p1 <- 0.2
+p2 <- 0.8
+pMix <- c(0.1, 0.2, 0.5)
+nSites <- 1000
+nVisits <- 50
+
+pvec0.1 <- c(p1, p2)[rbinom(nSites, 1, pMix[1]) + 1]
+pvec0.2 <- c(p1, p2)[rbinom(nSites, 1, pMix[2]) + 1]
+pvec0.5 <- c(p1, p2)[rbinom(nSites, 1, pMix[3]) + 1]
+
+plot_pMix0.1 <- ggplot() +
+  geom_histogram(aes(x = sapply(pvec0.1, function(p) rbinom(1, nVisits, p)))) +
+  labs(x = "detections / 50 visits", y = "count") +
+  ggtitle("pMix = 0.1") +
+  theme_minimal()
+
+plot_pMix0.2 <- ggplot() +
+  geom_histogram(aes(x = sapply(pvec0.2, function(p) rbinom(1, nVisits, p)))) +
+  labs(x = "detections / 50 visits", y = "count") +
+  ggtitle("pMix = 0.2") +
+  theme_minimal()
+
+plot_pMix0.5 <- ggplot() +
+  geom_histogram(aes(x = sapply(pvec0.5, function(p) rbinom(1, nVisits, p)))) +
+  labs(x = "detections / 50 visits", y = "count") +
+  ggtitle("pMix = 0.5") +
+  theme_minimal()
+
+final_mixturedet_plot <- plot_pMix0.1 + plot_pMix0.2 + plot_pMix0.5 + 
+  plot_layout(nrow = 1)
+ggsave("figures/modelbreak_mechanism_mixture_detection.png", 
+       final_mixturedet_plot, dpi = 400, 
+       width = 7, height = 3)
+
+
+
