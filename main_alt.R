@@ -6,6 +6,9 @@ source("occupancy_model.R")
 # load functions to simulate data
 source("simulate_data.R")
 
+# load auxiliary functions
+source("utils.R")
+
 #############
 # constants #
 #############
@@ -97,33 +100,13 @@ for (j in 1:length(psi_sd)) {
     # save sd
     pvalues_nonind[index, "sd"] <- psi_sd[j]
     
-    # calculate p values - conditioned on latent state
-    pvalues_nonind[index, "deviance"] <- mean(
-      samples[, "D_rep_total"] > samples[, "D_obs_total"]
-    )
-    pvalues_nonind[index, "chi_sq"] <- mean(
-      samples[, "chi_rep_total"] > samples[, "chi_obs_total"]
-    )
-    pvalues_nonind[index, "lik_ratio"] <- mean(
-      samples[, "ratio_rep_total"] > samples[, "ratio_obs_total"]
-    )
-    pvalues_nonind[index, "ftukey"] <- mean(
-      samples[, "tukey_rep_total"] > samples[, "tukey_obs_total"]
-    )
-    
-    # calculate p values - not conditioned on latent state
-    pvalues_nonind[index, "deviance_latent"] <- mean(
-      samples[, "D_rep_latent_total"] > samples[, "D_obs_total"]
-    )
-    pvalues_nonind[index, "chi_sq_latent"] <- mean(
-      samples[, "chi_rep_latent_total"] > samples[, "chi_obs_total"]
-    )
-    pvalues_nonind[index, "lik_ratio_latent"] <- mean(
-      samples[, "ratio_rep_latent_total"] > samples[, "ratio_obs_total"]
-    )
-    pvalues_nonind[index, "ftukey_latent"] <- mean(
-      samples[, "tukey_rep_latent_total"] > samples[, "tukey_obs_total"]
-    )
+    # calculate p values
+    pvalues_nonind[index, c("deviance", "chi_sq", "lik_ratio", 
+                             "ftukey", "deviance_latent", 
+                             "chi_sq_latent", 
+                             "lik_ratio_latent", 
+                             "ftukey_latent")] <- calc_pvalues(n_measures = 8,
+                                                               samples)
     
   }
 }
@@ -207,33 +190,13 @@ for (j in 1:length(rho)) {
     # save rho
     pvalues_betabin[index, "rho"] <- rho[j]
     
-    # calculate p values - conditioned on latent state
-    pvalues_betabin[index, "deviance"] <- mean(
-      samples[, "D_rep_total"] > samples[, "D_obs_total"]
-    )
-    pvalues_betabin[index, "chi_sq"] <- mean(
-      samples[, "chi_rep_total"] > samples[, "chi_obs_total"]
-    )
-    pvalues_betabin[index, "lik_ratio"] <- mean(
-      samples[, "ratio_rep_total"] > samples[, "ratio_obs_total"]
-    )
-    pvalues_betabin[index, "ftukey"] <- mean(
-      samples[, "tukey_rep_total"] > samples[, "tukey_obs_total"]
-    )
-    
-    # calculate p values - not conditioned on latent state
-    pvalues_betabin[index, "deviance_latent"] <- mean(
-      samples[, "D_rep_latent_total"] > samples[, "D_obs_total"]
-    )
-    pvalues_betabin[index, "chi_sq_latent"] <- mean(
-      samples[, "chi_rep_latent_total"] > samples[, "chi_obs_total"]
-    )
-    pvalues_betabin[index, "lik_ratio_latent"] <- mean(
-      samples[, "ratio_rep_latent_total"] > samples[, "ratio_obs_total"]
-    )
-    pvalues_betabin[index, "ftukey_latent"] <- mean(
-      samples[, "tukey_rep_latent_total"] > samples[, "tukey_obs_total"]
-    )
+    # calculate p values
+    pvalues_betabin[index, c("deviance", "chi_sq", "lik_ratio", 
+                             "ftukey", "deviance_latent", 
+                             "chi_sq_latent", 
+                             "lik_ratio_latent", 
+                             "ftukey_latent")] <- calc_pvalues(n_measures = 8,
+                                                               samples)
     
   }
 }
@@ -269,10 +232,10 @@ colnames(samples_psi) <- c("dataset", "pMix", 1:((niter - nburnin) / thin))
 
 # create model instance and compile
 constants <- list(nSites = nSites, nVisits = nVisits)
-model <- nimbleModel(model_basic_bin, constants = constants, 
-                     data = list(y = simulate_betabinomial(
-                       params = list(p = p, psi = psi), nSites, nVisits,
-                       rho = 0.01)))
+model <- nimbleModel(model_basic, constants = constants, 
+                     data = list(y = simulate_det_pMix(
+                       params = list(p1 = p1, p2 = p2, psi = psi), 
+                       nSites, nVisits, pMix = 0.1)))
 compiled_model <- compileNimble(model)
 
 # configure MCMC
@@ -295,17 +258,14 @@ for (j in 1:length(pMix)) {
   for (i in 1:n_datasets) {
     
     # simulate data
-    y <- simulate_betabinomial(
-      params = list(
-        psi = psi,
-        p = p
-      ), 
+    y <- simulate_det_pMix(
+      params = list(p1 = p1, p2 = p2, psi = psi), 
       nSites, nVisits, pMix[j]
     )
     compiled_model$y <- y
     
     # fit model
-    samples <- fit_basic_betabin(compiled_model, compiled_mcmc,
+    samples <- fit_basic(compiled_model, compiled_mcmc,
                                  niter, nburnin, thin)
     
     # get p-value df index
@@ -318,34 +278,13 @@ for (j in 1:length(pMix)) {
     # save pMix
     pvalues_betabin[index, "pMix"] <- pMix[j]
     
-    # calculate p values - conditioned on latent state
-    pvalues_betabin[index, "deviance"] <- mean(
-      samples[, "D_rep_total"] > samples[, "D_obs_total"]
-    )
-    pvalues_betabin[index, "chi_sq"] <- mean(
-      samples[, "chi_rep_total"] > samples[, "chi_obs_total"]
-    )
-    pvalues_betabin[index, "lik_ratio"] <- mean(
-      samples[, "ratio_rep_total"] > samples[, "ratio_obs_total"]
-    )
-    pvalues_betabin[index, "ftukey"] <- mean(
-      samples[, "tukey_rep_total"] > samples[, "tukey_obs_total"]
-    )
-    
-    # calculate p values - not conditioned on latent state
-    pvalues_betabin[index, "deviance_latent"] <- mean(
-      samples[, "D_rep_latent_total"] > samples[, "D_obs_total"]
-    )
-    pvalues_betabin[index, "chi_sq_latent"] <- mean(
-      samples[, "chi_rep_latent_total"] > samples[, "chi_obs_total"]
-    )
-    pvalues_betabin[index, "lik_ratio_latent"] <- mean(
-      samples[, "ratio_rep_latent_total"] > samples[, "ratio_obs_total"]
-    )
-    pvalues_betabin[index, "ftukey_latent"] <- mean(
-      samples[, "tukey_rep_latent_total"] > samples[, "tukey_obs_total"]
-    )
-    
+    # calculate p values 
+    pvalues_betabin[index, c("deviance", "chi_sq", "lik_ratio", 
+                             "ftukey", "deviance_latent", 
+                             "chi_sq_latent", 
+                             "lik_ratio_latent", 
+                             "ftukey_latent")] <- calc_pvalues(n_measures = 8,
+                                                               samples)
   }
 }
 
@@ -353,36 +292,4 @@ saveRDS(pvalues_betabin, "pvalues/alt/betabinom.rds")
 saveRDS(samples_p, "posterior/alt/p_betabinom.rds")
 saveRDS(samples_psi, "posterior/alt/psi_betabinom.rds")
 
-
-# function for calculating p values
-
-calc_pvalues <- function(df, samples, index) {
-  # calculate p values - conditioned on latent state
-  df[index, "deviance"] <- mean(
-    samples[, "D_rep_total"] > samples[, "D_obs_total"]
-  )
-  df[index, "chi_sq"] <- mean(
-    samples[, "chi_rep_total"] > samples[, "chi_obs_total"]
-  )
-  df[index, "lik_ratio"] <- mean(
-    samples[, "ratio_rep_total"] > samples[, "ratio_obs_total"]
-  )
-  df[index, "ftukey"] <- mean(
-    samples[, "tukey_rep_total"] > samples[, "tukey_obs_total"]
-  )
-  
-  # calculate p values - not conditioned on latent state
-  df[index, "deviance_latent"] <- mean(
-    samples[, "D_rep_latent_total"] > samples[, "D_obs_total"]
-  )
-  df[index, "chi_sq_latent"] <- mean(
-    samples[, "chi_rep_latent_total"] > samples[, "chi_obs_total"]
-  )
-  df[index, "lik_ratio_latent"] <- mean(
-    samples[, "ratio_rep_latent_total"] > samples[, "ratio_obs_total"]
-  )
-  df[index, "ftukey_latent"] <- mean(
-    samples[, "tukey_rep_latent_total"] > samples[, "tukey_obs_total"]
-  )
-}
 

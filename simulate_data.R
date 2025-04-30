@@ -149,7 +149,7 @@ simulate_betabinomial <- function(params, nSites, nVisits, rho) {
 # explore it.
 
 simulate_det_pMix <- function(params, nSites, nVisits, 
-                              pMix, hetSource = 'sites'){
+                              pMix, hetSource = 'sites') {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
@@ -186,7 +186,7 @@ simulate_det_pMix <- function(params, nSites, nVisits,
 # beta_p models the difference in detection probability between the group and the outliers
 # nOutliers defines how many sites are outliers  
 
-simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers){
+simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
@@ -215,7 +215,7 @@ simulate_det_outlier <- function(params, nSites, nVisits, beta_p, nOutliers){
 #   3. p - detection probability
 # pMix is the mixture probability between the two groups
 
-simulate_occ_pMix <- function(params, nRegions, nSites, nVisits, pMix){
+simulate_occ_pMix <- function(params, nRegions, nSites, nVisits, pMix) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
@@ -243,7 +243,7 @@ simulate_occ_pMix <- function(params, nRegions, nSites, nVisits, pMix){
 # nOutliers defines how many regions are outliers  
 
 simulate_det_outlier <- function(params, nRegions, nSites, 
-                                 nVisits, beta_o, nOutliers){
+                                 nVisits, beta_o, nOutliers) {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
