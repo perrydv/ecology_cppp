@@ -113,7 +113,7 @@ simulate_spatial_ranef <- function(params, nRegions, region, nSites, nVisits) {
 }
 
 
-### Model 4 - beta-binomial ###
+### Model 5 - beta-binomial ###
 
 # params requires 2 values 
 #   1. psi - occupancy probability
