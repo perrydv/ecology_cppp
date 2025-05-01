@@ -318,7 +318,7 @@ colnames(samples_psi) <- c("dataset", "beta_p", 1:((niter - nburnin) / thin))
 # create model instance and compile
 constants <- list(nSites = nSites, nVisits = nVisits)
 model <- nimbleModel(model_basic, constants = constants, 
-                     data = list(y = simulate_det_outlier_det(
+                     data = list(y = simulate_outlier_det(
                        params = list(p = p, psi = psi), nSites, nVisits, 
                        beta_p = 1, nOutliers = round(nSites * pOutlier))))
 compiled_model <- compileNimble(model)
@@ -343,7 +343,7 @@ for (j in 1:length(pMix)) {
   for (i in 1:n_datasets) {
     
     # simulate data
-    y <- simulate_det_outlier_det(params = list(p = p, psi = psi), nSites, 
+    y <- simulate_outlier_det(params = list(p = p, psi = psi), nSites, 
                                   nVisits, beta_p = beta_p[j], 
                                   nOutliers = round(nSites * pOutlier))
     compiled_model$y <- y
@@ -489,7 +489,7 @@ colnames(samples_psi) <- c("dataset", "beta_o", 1:((niter - nburnin) / thin))
 # create model instance and compile
 constants <- list(nSites = nSites, nVisits = nVisits)
 model <- nimbleModel(model_basic, constants = constants, 
-                     data = list(y = simulate_det_outlier_occ(
+                     data = list(y = simulate_outlier_occ(
                        params = list(p = p, psi = psi), 
                        nRegions, nSites, nVisits, beta_o = 0.1,
                        nOutliers = pOutlier * nRegions)))
@@ -515,7 +515,7 @@ for (j in 1:length(beta_o)) {
   for (i in 1:n_datasets) {
     
     # simulate data
-    y <- simulate_det_outlier_occ(
+    y <- simulate_outlier_occ(
       params = list(p = p, psi = psi), 
       nRegions, nSites, nVisits, beta_o = beta_o[j],
       nOutliers = pOutlier * nRegions)

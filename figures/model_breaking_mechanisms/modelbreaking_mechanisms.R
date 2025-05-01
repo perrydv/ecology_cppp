@@ -84,18 +84,24 @@ pvec0.5 <- c(p1, p2)[rbinom(nSites, 1, pMix[3]) + 1]
 
 plot_pMix0.1 <- ggplot() +
   geom_histogram(aes(x = sapply(pvec0.1, function(p) rbinom(1, nVisits, p)))) +
+  geom_vline(aes(xintercept = (p1 * (1 - pMix[1]) + p2 * pMix[1]) * nVisits), 
+             color = "red", linetype = "dashed") +
   labs(x = "detections / 50 visits", y = "count") +
   ggtitle("pMix = 0.1") +
   theme_minimal()
 
 plot_pMix0.2 <- ggplot() +
   geom_histogram(aes(x = sapply(pvec0.2, function(p) rbinom(1, nVisits, p)))) +
+  geom_vline(aes(xintercept = (p1 * (1 - pMix[2]) + p2 * pMix[2]) * nVisits), 
+             color = "red", linetype = "dashed") +
   labs(x = "detections / 50 visits", y = "count") +
   ggtitle("pMix = 0.2") +
   theme_minimal()
 
 plot_pMix0.5 <- ggplot() +
   geom_histogram(aes(x = sapply(pvec0.5, function(p) rbinom(1, nVisits, p)))) +
+  geom_vline(aes(xintercept = (p1 * (1 - pMix[3]) + p2 * pMix[3]) * nVisits), 
+             color = "red", linetype = "dashed") +
   labs(x = "detections / 50 visits", y = "count") +
   ggtitle("pMix = 0.5") +
   theme_minimal()
@@ -113,7 +119,7 @@ nSites <- 1000
 nOutliers <- 0.05 * nSites
 nVisits <- 50
 
-p_vec1 <- p_vec3 <- p_vec5 <-rep(p, nSites)
+p_vec1 <- p_vec3 <- p_vec5 <- rep(p, nSites)
 
 p_vec1[sample(1:nSites, nOutliers, replace = F)] <- 1 / 
   (1 + exp(-(log(p / (1 - p)) + beta_p[1])))
@@ -124,18 +130,30 @@ p_vec5[sample(1:nSites, nOutliers, replace = F)] <- 1 /
 
 plot_pOut1 <- ggplot() +
   geom_histogram(aes(x = sapply(p_vec1, function(p) rbinom(1, nVisits, p)))) +
+  geom_vline(aes(xintercept = (
+    unique(p_vec1)[1] * (1 - nOutliers / nSites) + 
+      unique(p_vec1)[2] * nOutliers / nSites
+  ) * nVisits), color = "red", linetype = "dashed") +
   labs(x = "detections / 50 visits", y = "count") +
   ggtitle("beta = 1") +
   theme_minimal()
 
 plot_pOut3 <- ggplot() +
   geom_histogram(aes(x = sapply(p_vec3, function(p) rbinom(1, nVisits, p)))) +
+  geom_vline(aes(xintercept = (
+    unique(p_vec3)[1] * (1 - nOutliers / nSites) + 
+      unique(p_vec3)[2] * nOutliers / nSites
+  ) * nVisits), color = "red", linetype = "dashed") +
   labs(x = "detections / 50 visits", y = "count") +
   ggtitle("beta = 3") +
   theme_minimal()
 
 plot_pOut5 <- ggplot() +
   geom_histogram(aes(x = sapply(p_vec5, function(p) rbinom(1, nVisits, p)))) +
+  geom_vline(aes(xintercept = (
+    unique(p_vec5)[1] * (1 - nOutliers / nSites) + 
+      unique(p_vec5)[2] * nOutliers / nSites
+  ) * nVisits), color = "red", linetype = "dashed") +
   labs(x = "detections / 50 visits", y = "count") +
   ggtitle("beta = 5") +
   theme_minimal()
@@ -166,18 +184,24 @@ psivec0.5 <- rbinom(nSites, 1,
 
 plot_oMix0.01 <- ggplot() +
   geom_histogram(aes(x = psivec0.01)) +
+  geom_vline(aes(xintercept = psi1 * (1 - pMix[1]) + psi2 * pMix[1]), 
+             color = "red", linetype = "dashed") +
   labs(x = "z", y = "count") +
   ggtitle("pMix = 0.01") +
   theme_minimal()
 
 plot_oMix0.2 <- ggplot() +
   geom_histogram(aes(x = psivec0.2)) +
+  geom_vline(aes(xintercept = psi1 * (1 - pMix[2]) + psi2 * pMix[2]), 
+             color = "red", linetype = "dashed") +
   labs(x = "z", y = "count") +
   ggtitle("pMix = 0.2") +
   theme_minimal()
 
 plot_oMix0.5 <- ggplot() +
   geom_histogram(aes(x = psivec0.5)) +
+  geom_vline(aes(xintercept = psi1 * (1 - pMix[3]) + psi2 * pMix[3]), 
+             color = "red", linetype = "dashed") +
   labs(x = "z", y = "count") +
   ggtitle("pMix = 0.5") +
   theme_minimal()
@@ -192,40 +216,54 @@ ggsave("figures/model_breaking_mechanisms/modelbreak_mixture_occ.png",
 # occupancy outliers
 p <- 0.2
 psi <- 0.3
-beta_o <- c(0.1, 0.5, 1)
+beta_o <- c(0.1, 0.5, 10)
 nSites <- 1000
 nRegions <- nSites / 5
 nOutliers <- 0.05 * nRegions
 nVisits <- 50
 
-psi_region <- rep(psi, nRegions)
+psi_region_vec0.1 <- rep(psi, nRegions)
+psi_region_vec0.1[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
+    (1 + exp(-(log(psi / (1 - psi)) + beta_o[1])))
+psi_vec0.1 <- rep(psi_region_vec0.1, each = nSites / nRegions)
+mean(psi_vec0.1)
 
-psi_vec0.1 <- rep(psi_region[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
-                  (1 + exp(-(log(psi / (1 - psi)) + beta_o[1]))), 
-                each = nSites/nRegions)
+psi_region_vec0.5 <- rep(psi, nRegions)
+psi_region_vec0.5[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
+  (1 + exp(-(log(psi / (1 - psi)) + beta_o[2])))
+psi_vec0.5 <- rep(psi_region_vec0.5, each = nSites / nRegions)
 
-psi_vec0.5 <- rep(psi_region[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
-                  (1 + exp(-(log(psi / (1 - psi)) + beta_o[2]))), 
-                each = nSites/nRegions)
+psi_region_vec1 <- rep(psi, nRegions)
+psi_region_vec1[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
+  (1 + exp(-(log(psi / (1 - psi)) + beta_o[3])))
+psi_vec1 <- rep(psi_region_vec1, each = nSites / nRegions)
 
-psi_vec1 <- rep(psi_region[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
-                  (1 + exp(-(log(psi / (1 - psi)) + beta_o[3]))), 
-                each = nSites/nRegions)
 
 plot_oOut0.1 <- ggplot() +
   geom_histogram(aes(x = rbinom(nSites, 1, psi_vec0.1))) +
+  geom_vline(aes(xintercept = unique(psi_vec0.1)[1] * 
+                   (1 - nOutliers / nRegions) + 
+                   unique(psi_vec0.1)[2] * nOutliers / nRegions), 
+             color = "red", linetype = "dashed") +
   labs(x = "z", y = "count") +
   ggtitle("beta = 0.1") +
   theme_minimal()
 
 plot_oOut0.5 <- ggplot() +
   geom_histogram(aes(x = rbinom(nSites, 1, psi_vec0.5))) +
+  geom_vline(aes(xintercept = unique(psi_vec0.5)[1] * 
+                   (1 - nOutliers / nRegions) + 
+                   unique(psi_vec0.5)[2] * nOutliers / nRegions), 
+             color = "red", linetype = "dashed") +
   labs(x = "z", y = "count") +
   ggtitle("beta = 0.5") +
   theme_minimal()
 
 plot_oOut1 <- ggplot() +
   geom_histogram(aes(x = rbinom(nSites, 1, psi_vec1))) +
+  geom_vline(aes(xintercept = unique(psi_vec1)[1] * (1 - nOutliers / nRegions) + 
+                   unique(psi_vec1)[2] * nOutliers / nRegions), 
+             color = "red", linetype = "dashed") +
   labs(x = "z", y = "count") +
   ggtitle("beta = 1") +
   theme_minimal()

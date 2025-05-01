@@ -8,9 +8,6 @@ source("utils.R")
 # get coverage #
 ################
 
-p <- 0.3
-psi <- 0.6
-
 # non-independent sites
 coverage_nonind <- get_coverage(
   true_p = 0.3, true_psi = 0.6, samples_p_fname = "posterior/alt/p_nonind.rds", 
@@ -22,6 +19,46 @@ coverage_betabin <- get_coverage(
   true_p = 0.3, true_psi = 0.6, 
   samples_p_fname = "posterior/alt/p_betabinom.rds", 
   samples_psi_fname = "posterior/alt/psi_betabinom.rds", axis = "rho"
+)
+
+# detection mixture
+coverage_detMix <- get_coverage(
+  true_p = c(0.2, 0.8), true_psi = 0.6, 
+  samples_p_fname = "posterior/alt/p_detectionMix.rds", 
+  samples_psi_fname = "posterior/alt/psi_detectionMix.rds", axis = "pMix"
+)
+
+# detection outlier
+p <- 0.2
+beta_p <- c(1, 3, 5)
+pOutlier <- 0.05
+p_alt <- 1 / (1 + exp(-(log(p / (1 - p)) + beta_p)))
+p_multi <- p * (1 - pOutlier) + p_alt * pOutlier
+
+coverage_detOut <- get_coverage(
+  true_p = p_multi, true_psi = 0.6, 
+  samples_p_fname = "posterior/alt/p_detectionOut.rds", 
+  samples_psi_fname = "posterior/alt/psi_detectionOut.rds", axis = "beta_p"
+)
+
+# occupancy mixture
+coverage_occMix <- get_coverage(
+  true_p = 0.3, true_psi = c(0.2, 0.8), 
+  samples_p_fname = "posterior/alt/p_occupancyMix.rds", 
+  samples_psi_fname = "posterior/alt/psi_occupancyMix.rds", axis = "pMix"
+)
+
+# occupancy outlier
+psi <- 0.3
+beta_o <- c(0.1, 0.5, 1)
+pOutlier <- 0.05
+psi_alt <- 1 / (1 + exp(-(log(psi / (1 - psi)) + beta_o)))
+psi_multi <- psi_alt * (1 - pOutlier) + psi_alt * pOutlier
+
+coverage_occOut <- get_coverage(
+  true_p = 0.2, true_psi = psi_multi, 
+  samples_p_fname = "posterior/alt/p_occupancyOut.rds", 
+  samples_psi_fname = "posterior/alt/psi_occupancyOut.rds", axis = "beta_o"
 )
 
 
@@ -211,6 +248,38 @@ plots_occMix <- get_ppp_plots(pvalue_fig_data = pvalue_fig_occMix,
 ggsave("figures/ppp/pvalues_occMix_notcond.png", plots_occMix[[1]],
        dpi = 400, width = 7, height = 5)
 ggsave("figures/ppp/pvalues_occMix_cond.png", plots_occMix[[2]],
+       dpi = 400, width = 7, height = 5)
+
+
+#####################
+# outlier occupancy #
+#####################
+
+##################
+# prep figure data
+
+pvalue_fig_occOut <- prep_fig_data(
+  pvalue_fname = "pvalues/alt/occupancyOut.rds",
+  axis_name = "beta_o", axis_values = c(0.1, 0.5, 1),
+  null_df_notcond = pvalues_null_notcond,
+  null_df_cond = pvalues_null_cond)
+
+# create figure labels
+occOut_labels <- c(
+  "0.1" = "beta_o = 0.1",
+  "0.5" = "beta_o = 0.5",
+  "1" = "beta_o = 1"
+)
+
+# create plots
+plots_occOut <- get_ppp_plots(pvalue_fig_data = pvalue_fig_occOut, 
+                              title = "occupancy outlier", 
+                              axis = "beta_o", labels = occOut_labels)
+
+# save plots
+ggsave("figures/ppp/pvalues_occOut_notcond.png", plots_occOut[[1]],
+       dpi = 400, width = 7, height = 5)
+ggsave("figures/ppp/pvalues_occOut_cond.png", plots_occOut[[2]],
        dpi = 400, width = 7, height = 5)
 
 

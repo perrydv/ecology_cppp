@@ -43,9 +43,37 @@ get_coverage <- function(true_p, true_psi, samples_p_fname,
     # calculate credible interval
     ci_p <- hdi(samples_p[i, 3:ncol(samples_p)])[2:3]
     ci_psi <- hdi(samples_psi[i, 3:ncol(samples_psi)])[2:3]
-    coverage[i, "coverage_p"] <- true_p >= ci_p$CI_low && true_p <= ci_p$CI_high
-    coverage[i, "coverage_psi"] <- true_psi >= ci_psi$CI_low && 
-      true_psi <= ci_psi$CI_high
+    
+    # get p coverage
+    if (length(true_p) == 1) {
+      coverage[i, "coverage_p"] <- true_p >= ci_p$CI_low && 
+        true_p <= ci_p$CI_high 
+    } else if (length(true_p) == 2) {
+      p <- true_p[1] * (1 - samples_p[i, "pMix"]) + 
+        true_p[2] * samples_p[i, "pMix"]
+      coverage[i, "coverage_p"] <- p >= ci_p$CI_low && p <= ci_p$CI_high 
+    } else {
+      p <- true_p[which(unique(samples_p[,"beta_p"]) == samples_p[i, "beta_p"])] 
+      coverage[i, "coverage_p"] <- p >= ci_p$CI_low && p <= ci_p$CI_high 
+    }
+    
+    # get psi coverage
+    if (length(true_psi) == 1) {
+      coverage[i, "coverage_psi"] <- true_psi >= ci_psi$CI_low && 
+        true_psi <= ci_psi$CI_high
+    } else if (length(true_psi) == 2) {
+      psi <- true_psi[1] * (1 - samples_psi[i, "pMix"]) + 
+        true_psi[2] * samples_psi[i, "pMix"]
+      coverage[i, "coverage_psi"] <- psi >= ci_psi$CI_low && 
+        psi <= ci_psi$CI_high 
+    } else {
+      psi <- true_psi[
+        which(unique(samples_psi[,"beta_o"]) == samples_psi[i, "beta_o"])] 
+      coverage[i, "coverage_psi"] <- psi >= ci_psi$CI_low && 
+        psi <= ci_psi$CI_high 
+    }
+    
+    # store axis
     coverage[i, axis] <- samples_p[i, axis]
     
   }
