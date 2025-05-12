@@ -28,6 +28,17 @@ coverage_detMix <- get_coverage(
   samples_psi_fname = "posterior/alt/psi_detectionMix.rds", axis = "pMix"
 )
 
+# occupancy interaction
+coverage_interaction_beta0 <- get_coverage_beta(
+  true_p = 0.3, true_beta = 0, 
+  samples_p_fname = "posterior/alt/p_interaction.rds", 
+  samples_beta_fname = "posterior/alt/beta0_interaction.rds", axis = "beta2")
+coverage_interaction_beta1 <- get_coverage_beta(
+  true_p = 0.3, true_beta = 0.5, 
+  samples_p_fname = "posterior/alt/p_interaction.rds", 
+  samples_beta_fname = "posterior/alt/beta1_interaction.rds", axis = "beta2")
+
+
 # detection outlier
 p <- 0.2
 beta_p <- c(1, 3, 5)
@@ -68,6 +79,9 @@ coverage_occOut <- get_coverage(
 #############
 #############
 
+###############
+# no covariates
+
 # read in null hypothesis ppp
 pvalues_null_notcond <- as.data.frame(readRDS("pvalues/null/basic_latent.rds")) %>% 
   pivot_longer(cols = everything(),
@@ -84,6 +98,30 @@ pvalues_null_cond <- as.data.frame(readRDS("pvalues/null/basic.rds")) %>%
          measure = recode(measure,
                           "chi_sq" = "chisq", "lik_ratio" = "likratio"))
 
+###############
+# occupancy covariates
+
+# read in null hypothesis ppp
+pvalues_null_notcond <- as.data.frame(readRDS("pvalues/null/interaction.rds")) %>% 
+  pivot_longer(cols = everything(),
+               names_to = "measure",
+               values_to = "pvalue") %>% 
+  filter(measure %in% c("deviance_latent", "chi_sq_latent", "lik_ratio_latent",
+                        "ftukey_latent")) %>% 
+  mutate(hyp = "null",
+         measure = recode(measure,
+                          "chi_sq_latent" = "chisq", "ftukey_latent" = "ftukey",
+                          "deviance_latent" = "deviance",
+                          "lik_ratio_latent" = "likratio"))
+pvalues_null_cond <- as.data.frame(readRDS("pvalues/null/interaction.rds")) %>% 
+  pivot_longer(cols = everything(),
+               names_to = "measure",
+               values_to = "pvalue") %>% 
+  filter(measure %in% c("deviance", "chi_sq", "lik_ratio", "ftukey")) %>% 
+  mutate(hyp = "null",
+         measure = recode(measure,
+                          "chi_sq" = "chisq", "lik_ratio" = "likratio"))
+
 # create figure labels
 discrepancy_labels <- c(
   "chisq" = "chi-squared",
@@ -91,6 +129,37 @@ discrepancy_labels <- c(
   "ftukey" = "Freeman-Tukey",
   "likratio" = "likelihood\nratio"
 )
+
+#########################
+# occupancy interaction #
+#########################
+
+##################
+# prep figure data
+
+pvalue_fig_inter <- prep_fig_data(pvalue_fname = "pvalues/alt/interaction.rds", 
+                                   axis_name = "beta2", 
+                                   axis_values = c(1, 3, 5), 
+                                   null_df_notcond = pvalues_null_notcond,
+                                   null_df_cond = pvalues_null_cond)
+
+# create figure labels
+beta2_labels <- c(
+  "1" = "beta2 = 1",
+  "3" = "beta2 = 3",
+  "5" = "beta2 = 5"
+)
+
+# create plots
+plots_inter <- get_ppp_plots(pvalue_fig_data = pvalue_fig_inter, 
+                              title = "covariate interaction", 
+                              axis = "beta2", labels = beta2_labels)
+
+# save plots
+ggsave("figures/ppp/pvalues_inter_notcond.png", plots_inter[[1]],
+       dpi = 400, width = 7, height = 5)
+ggsave("figures/ppp/pvalues_inter_cond.png", plots_inter[[2]],
+       dpi = 400, width = 7, height = 5)
 
 #########################
 # site non-independence #

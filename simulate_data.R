@@ -19,7 +19,7 @@ simulate_basic <- function(params, nSites, nVisits) {
   return(y)
 }
 
-### Model 2 - occupancy covariates ###
+### Model 2a - occupancy covariates ###
 
 # params requires 2 values 
 #   1. beta - covariate coefficients on occupancy
@@ -37,6 +37,36 @@ simulate_cov_occ <- function(params, x_site, nSites, nVisits) {
   for (i in 1:nSites) {
     
     psi[i] <- plogis(params$beta %*% x_site[i, ])
+    
+    z[i] <- rbinom(1, 1, psi[i])
+    
+    y[i, ] <- rbinom(nVisits, 1, z[i] * params$p)
+    
+  }
+  
+  return(y)
+  
+} 
+
+### Model 2b - occupancy covariates, interaction ###
+
+# params requires 2 values 
+#   1. beta - covariate coefficients on occupancy
+#   2. p - detection probability
+# x_site is the site-level covariate data
+simulate_cov_occ_inter <- function(params, x_site, nSites, nVisits) {
+  
+  y <- matrix(NA, nrow = nSites, ncol = nVisits)
+  
+  psi <- rep(NA, nSites)
+  
+  z <- rep(NA, nSites)
+  
+  
+  for (i in 1:nSites) {
+    
+    psi[i] <- plogis(params$beta[1] + params$beta[2] * x_site[i, 1] +
+                       params$beta[3] * x_site[i, 1] * x_site[i, 2])
     
     z[i] <- rbinom(1, 1, psi[i])
     

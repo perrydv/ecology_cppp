@@ -87,6 +87,47 @@ get_coverage <- function(true_p, true_psi, samples_p_fname,
   return(coverage_summary)
 }
 
+# function for getting coverage - site occupancy covariates
+get_coverage_beta <- function(true_p, true_beta, samples_p_fname, 
+                              samples_beta_fname, axis) {
+  
+  # read in samples
+  samples_beta <- readRDS(samples_beta_fname)
+  samples_p <- readRDS(samples_p_fname)
+  
+  # create empty df to store coverage
+  coverage <- matrix(NA, nrow = nrow(samples_beta), ncol = 3)
+  colnames(coverage) <- c("coverage_p", "coverage_beta", axis)
+  
+  # get coverage
+  for (i in 1:nrow(samples_beta)) {
+    
+    # calculate credible interval
+    ci_p <- hdi(samples_p[i, 3:ncol(samples_p)])[2:3]
+    ci_beta <- hdi(samples_beta[i, 3:ncol(samples_beta)])[2:3]
+    
+    # get p coverage
+    coverage[i, "coverage_p"] <- true_p >= ci_p$CI_low && 
+      true_p <= ci_p$CI_high 
+    
+    # get beta coverage
+    coverage[i, "coverage_beta"] <- true_beta >= ci_beta$CI_low && 
+      true_beta <= ci_beta$CI_high
+    
+    # store axis
+    coverage[i, axis] <- samples_p[i, axis]
+    
+  }
+  
+  # get coverage summary
+  coverage_summary <- as.data.frame(coverage) %>% 
+    group_by(.data[[axis]]) %>% 
+    summarize(mean_p = mean(coverage_p),
+              mean_beta = mean(coverage_beta))
+  
+  return(coverage_summary)
+}
+
 
 # function to prepare figure data
 prep_fig_data <- function(pvalue_fname, axis_name, axis_values, 

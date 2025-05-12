@@ -1,6 +1,49 @@
 library(tidyverse)
 library(patchwork)
 
+# occupancy covariate interaction
+x1 <- rnorm(100)
+x2 <- rnorm(100)
+beta0 <- 0
+beta1 <- 0.5
+beta2 <- c(1, 3, 5)
+psi_null <- data.frame(psi = plogis(beta0 + beta1 * x1)) %>% mutate(hyp = "null")
+psi_alt1 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + beta2[1] * x1 * x2)) %>% 
+  mutate(hyp = "alt"), psi_null)
+psi_alt2 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + beta2[2] * x1 * x2)) %>% 
+                    mutate(hyp = "alt"), psi_null)
+psi_alt3 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + beta2[3] * x1 * x2)) %>% 
+                    mutate(hyp = "alt"), psi_null)
+
+plot_1 <- ggplot() +
+  geom_density(data = psi_alt1, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("beta = 1") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal()
+
+plot_3 <- ggplot() +
+  geom_density(data = psi_alt2, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("beta = 3") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal()
+
+plot_5 <- ggplot() +
+  geom_density(data = psi_alt3, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("beta = 5") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal()
+
+final_inter_plot <- plot_1 + plot_3 + plot_5 + plot_layout(nrow = 1)
+ggsave("figures/model_breaking_mechanisms/modelbreak_interaction.png", 
+       dpi = 400, width = 7, height = 3)
+
+
 # non independent sites
 psi <- 0.6
 
