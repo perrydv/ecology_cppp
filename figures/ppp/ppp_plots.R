@@ -30,13 +30,13 @@ coverage_detMix <- get_coverage(
 
 # occupancy interaction
 coverage_interaction_beta0 <- get_coverage_beta(
-  true_p = 0.3, true_beta = 0, 
-  samples_p_fname = "posterior/alt/p_interaction.rds", 
-  samples_beta_fname = "posterior/alt/beta0_interaction.rds", axis = "beta2")
+  true_p = 0.1, true_beta = 0, 
+  samples_p_fname = "posterior/alt/p_interaction_0.1.rds", 
+  samples_beta_fname = "posterior/alt/beta0_interaction_0.1.rds", axis = "beta2")
 coverage_interaction_beta1 <- get_coverage_beta(
-  true_p = 0.3, true_beta = 0.5, 
-  samples_p_fname = "posterior/alt/p_interaction.rds", 
-  samples_beta_fname = "posterior/alt/beta1_interaction.rds", axis = "beta2")
+  true_p = 0.1, true_beta = 0.5, 
+  samples_p_fname = "posterior/alt/p_interaction_0.1.rds", 
+  samples_beta_fname = "posterior/alt/beta1_interaction_0.1.rds", axis = "beta2")
 
 
 # detection outlier
@@ -102,7 +102,7 @@ pvalues_null_cond <- as.data.frame(readRDS("pvalues/null/basic.rds")) %>%
 # occupancy covariates
 
 # read in null hypothesis ppp
-pvalues_null_notcond <- as.data.frame(readRDS("pvalues/null/interaction.rds")) %>% 
+pvalues_null_notcond <- as.data.frame(readRDS("pvalues/null/interaction_0.1.rds")) %>% 
   pivot_longer(cols = everything(),
                names_to = "measure",
                values_to = "pvalue") %>% 
@@ -113,7 +113,7 @@ pvalues_null_notcond <- as.data.frame(readRDS("pvalues/null/interaction.rds")) %
                           "chi_sq_latent" = "chisq", "ftukey_latent" = "ftukey",
                           "deviance_latent" = "deviance",
                           "lik_ratio_latent" = "likratio"))
-pvalues_null_cond <- as.data.frame(readRDS("pvalues/null/interaction.rds")) %>% 
+pvalues_null_cond <- as.data.frame(readRDS("pvalues/null/interaction_0.1.rds")) %>% 
   pivot_longer(cols = everything(),
                names_to = "measure",
                values_to = "pvalue") %>% 
@@ -137,7 +137,7 @@ discrepancy_labels <- c(
 ##################
 # prep figure data
 
-pvalue_fig_inter <- prep_fig_data(pvalue_fname = "pvalues/alt/interaction.rds", 
+pvalue_fig_inter <- prep_fig_data(pvalue_fname = "pvalues/alt/interaction_0.1.rds", 
                                    axis_name = "beta2", 
                                    axis_values = c(1, 3, 5), 
                                    null_df_notcond = pvalues_null_notcond,
@@ -156,9 +156,9 @@ plots_inter <- get_ppp_plots(pvalue_fig_data = pvalue_fig_inter,
                               axis = "beta2", labels = beta2_labels)
 
 # save plots
-ggsave("figures/ppp/pvalues_inter_notcond.png", plots_inter[[1]],
+ggsave("figures/ppp/pvalues_inter_notcond_p0.1.png", plots_inter[[1]],
        dpi = 400, width = 7, height = 5)
-ggsave("figures/ppp/pvalues_inter_cond.png", plots_inter[[2]],
+ggsave("figures/ppp/pvalues_inter_cond_p0.1.png", plots_inter[[2]],
        dpi = 400, width = 7, height = 5)
 
 #########################
