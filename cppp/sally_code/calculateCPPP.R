@@ -63,6 +63,8 @@ calcDiscrepancies <- nimbleFunction(
 
     },
     run = function(MCMCOutput = double(2)){
+      
+      #browser()
 
         origDataValues  <- values(model, dataNodes)
         origParamValues <- values(model, paramNodes)
@@ -76,7 +78,7 @@ calcDiscrepancies <- nimbleFunction(
 
         for(i in 1:nSamples){
             ## put MCMC values from sampled iteration in the model
-            values(model, paramNodes) <<- MCMCOutput[i, ] ## Question: Should we use MCMCOutput[i, paramIndices]?
+            values(model, paramNodes) <<- MCMCOutput[i, 1:2] ## Question: Should we use MCMCOutput[i, paramIndices]?
 
             ## calculate 
             model$calculate(paramDependencies)

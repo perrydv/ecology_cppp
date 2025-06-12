@@ -73,16 +73,16 @@ discrepancyFunction_BASE <- nimbleFunctionVirtual(
 ## chi-squared discrepancy function
 chisqDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs){
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
   },
-  run = function(compiled_model){
+  run = function(){
     
     # get y_exp
-    y_exp <- compiled_model$z * compiled_model$p * nVisits
+    y_exp <- model$z * model$p * nVisits
     
     # calculate chi squared discrepancy measure
-    chi_out <- (compiled_model$y - y_exp) ^ 2 / (compiled_model$y + 1e-6)
+    chi_out <- (model$y - y_exp) ^ 2 / (model$y + 1e-6)
     
     returnType(double(0)) 
     return(sum(chi_out))
@@ -93,6 +93,8 @@ chisqDiscFunction <- nimbleFunction(
 ###################
 # function inputs #
 ###################
+
+dataNames <- "y"
 
 # if *not* conditioning on latent state
 paramNames <- c("p", "psi")
@@ -105,3 +107,12 @@ simNodes <- "y"
 discrepancyFunctions <- list(chisqDiscFunction)
 discrepancyFunctionsArgs <- list(list(nVisits = nVisits))
 
+
+calcDiscrepanciesFun <- calcDiscrepancies(model,
+                                          dataNames,
+                                          paramNames,
+                                          simNodes,
+                                          discrepancyFunctions, ## Could be one nimbleFunction or a list of them
+                                          discrepancyFunctionsArgs)
+
+out <- calcDiscrepanciesFun$run(MCMCOutput[1:5, ])
