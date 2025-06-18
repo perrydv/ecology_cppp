@@ -560,15 +560,17 @@ beta2 <- c(1, 3, 5)
 
 # create df to store p values
 ## null
-pvalues_inter_null <- matrix(NA, nrow = n_datasets, ncol = 8)
+pvalues_inter_null <- matrix(NA, nrow = n_datasets, ncol = 10)
 colnames(pvalues_inter_null) <- c("deviance", "chi_sq", "lik_ratio", 
-                                  "ftukey", "deviance_latent", "chi_sq_latent", 
-                                  "lik_ratio_latent", "ftukey_latent")
+                                  "ftukey", "deviance_latent", "chi_sq_latent",
+                                  "lik_ratio_latent", 
+                                  "ftukey_latent","z_chi_sq","z_ftukey")
 ## alt
-pvalues_inter_alt <- matrix(NA, nrow = n_datasets * length(beta2), ncol = 9)
-colnames(pvalues_inter_alt) <- c("beta2", "deviance", "chi_sq", "lik_ratio", 
-                                 "ftukey", "deviance_latent", "chi_sq_latent", 
-                                 "lik_ratio_latent", "ftukey_latent")
+pvalues_inter_alt <- matrix(NA, nrow = n_datasets * length(beta2), ncol = 11)
+colnames(pvalues_inter_alt) <- c("beta2","deviance", "chi_sq", "lik_ratio", 
+                                           "ftukey", "deviance_latent", "chi_sq_latent",
+                                           "lik_ratio_latent", 
+                                           "ftukey_latent","z_chi_sq","z_ftukey")
 
 # create df to store samples
 samples_p <- matrix(NA, nrow = n_datasets * length(beta2), 
@@ -583,7 +585,7 @@ colnames(samples_beta1) <- c("dataset", "beta2", 1:((niter - nburnin) / thin))
 
 # create model instance and compile
 constants <- list(nSites = nSites, nVisits = nVisits, ncov = length(beta))
-model <- nimbleModel(model_cov_occ, constants = constants, 
+model <- nimbleModel(model_cov_occ_zdisc, constants = constants, 
                      data = list(y = simulate_cov_occ(
                        params = list(p = p, beta = beta), 
                        cbind(rep(1, nSites), rnorm(nSites)), nSites, nVisits)))
@@ -596,7 +598,9 @@ mcmc_conf <- configureMCMC(
                "D_obs_total", "D_rep_total", "D_rep_latent_total",
                "chi_obs_total", "chi_rep_total", "chi_rep_latent_total",
                "ratio_obs_total", "ratio_rep_total", "ratio_rep_latent_total",
-               "tukey_obs_total", "tukey_rep_total", "tukey_rep_latent_total")
+               "tukey_obs_total", "tukey_rep_total", "tukey_rep_latent_total",
+               "chi_z_obs_total","chi_z_rep_total",
+               "tukey_z_obs_total","tukey_z_rep_total")
 )
 
 # build MCMC
@@ -624,7 +628,7 @@ for (i in 1:n_datasets) {
                          niter, nburnin, thin)
   
   # get p-values
-  pvalues_inter_null[i, ] <- calc_pvalues(n_measures = 8, samples)
+  pvalues_inter_null[i, ] <- calc_pvalues(n_measures = 10, samples)
   
   # calculate alt p-values
   for (j in 1:length(beta2)) {
@@ -657,15 +661,31 @@ for (i in 1:n_datasets) {
     pvalues_inter_alt[index, c("deviance", "chi_sq", "lik_ratio", 
                                "ftukey", "deviance_latent", "chi_sq_latent",
                                "lik_ratio_latent", 
-                               "ftukey_latent")] <- calc_pvalues(n_measures = 8,
+                               "ftukey_latent","z_chi_sq","z_ftukey")] <- calc_pvalues(n_measures = 10,
                                                                  samples)
   }
 }
 
-saveRDS(pvalues_inter_alt, "pvalues/alt/interaction_0.1.rds")
-saveRDS(pvalues_inter_null, "pvalues/null/interaction_0.1.rds")
-saveRDS(samples_p, "posterior/alt/p_interaction_0.1.rds")
-saveRDS(samples_beta0, "posterior/alt/beta0_interaction_0.1.rds")
-saveRDS(samples_beta1, "posterior/alt/beta1_interaction_0.1.rds")
+saveRDS(pvalues_inter_alt, "pvalues/alt/interaction_0.2.rds")
+saveRDS(pvalues_inter_null, "pvalues/null/interaction_0.2.rds")
+saveRDS(samples_p, "posterior/alt/p_interaction_0.2.rds")
+saveRDS(samples_beta0, "posterior/alt/beta0_interaction_0.2.rds")
+saveRDS(samples_beta1, "posterior/alt/beta1_interaction_0.2.rds")
 
 
+
+pvalues_inter_null %>% 
+  data.frame() %>% 
+  mutate(iter = 1:n(), mod = 'null') %>% 
+  pivot_longer(1:10) %>% 
+  left_join(expand.grid(beta2 = unique(pvalues_inter_alt[,1]),iter = 1:200),relationship = "many-to-many") %>% 
+  bind_rows(pvalues_inter_alt %>%
+  data.frame() %>% 
+  group_by(beta2) %>% 
+  mutate(iter = 1:n(), mod = 'alt') %>% 
+  pivot_longer(2:11)) %>% 
+  ggplot(aes(x = value))+
+  geom_histogram(aes(fill = mod), alpha = .8, position = 'identity')+
+  scale_x_continuous(limits = c(0.25,0.75))+
+  facet_grid(beta2~name)+
+  theme_bw()

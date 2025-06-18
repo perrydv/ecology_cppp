@@ -423,6 +423,102 @@ model_basic_bin <- nimbleCode({
   
 })
 
+# 6. covariates on occupancy site level discrepancy measures
+model_cov_occ_zdisc <- nimbleCode({
+  
+  p ~ dunif(0, 1)
+  for (c in 1:ncov) {
+    beta[c] ~ dunif(-10, 10)
+  }
+  
+  # logit link - site-level covariates
+  psi[1:nSites] <- ilogit(x_site[1:nSites, 1:ncov] %*% beta[1:ncov])
+  
+  
+  for (i in 1:nSites) {
+    
+    z[i] ~ dbern(psi[i])
+    
+    # posterior predictive replicated data
+    z_rep[i] ~ dbern(psi[i])
+    
+    for (j in 1:nVisits) {
+      
+      # observed data
+      y[i, j] ~ dbern(z[i] * p)
+      
+      # log deviance for observed data
+      D_obs[i, j] <- -2 * log(dbinom(y[i, j], 1, z[i] * p) + 1e-6) 
+      
+      # posterior predictive replicated data - conditioned on latent state
+      y_rep[i, j] ~ dbern(z[i] * p)
+      
+      # posterior predictive replicated data - not conditioned on latent state
+      y_rep_latent[i, j] ~ dbern(z_rep[i] * p)
+      
+      # deviance - pp data - conditioned on latent state
+      D_rep[i, j] <- -2 * 
+        log(dbinom(y_rep[i, j], 1, z[i] * p) + 1e-6)
+      
+      # deviance - pp data - not conditioned on latent state
+      D_rep_latent[i, j] <- -2 * 
+        log(dbinom(y_rep_latent[i, j], 1, z_rep[i] * p) + 1e-6)
+      
+    }
+    
+    # expected values
+    y_exp[i, 1:nVisits] <- z[i] * p
+    y_exp_rep[i, 1:nVisits] <- z_rep[i] * p
+    
+  }
+  
+  ##############################
+  # total discrepancy measures #
+  ##############################
+  
+  # deviance
+  D_obs_total <- sum(D_obs[1:nSites, 1:nVisits])
+  D_rep_total <- sum(D_rep[1:nSites, 1:nVisits])
+  D_rep_latent_total <- sum(D_rep_latent[1:nSites, 1:nVisits])
+  
+  # chi-squared
+  chi_obs_total <- calc_chi(y[1:nSites, 1:nVisits],
+                            y_exp[1:nSites, 1:nVisits])
+  chi_rep_total <- calc_chi(y_rep[1:nSites, 1:nVisits],
+                            y_exp[1:nSites, 1:nVisits])
+  chi_rep_latent_total <- calc_chi(y_rep_latent[1:nSites, 1:nVisits],
+                                   y_exp_rep[1:nSites, 1:nVisits])
+  
+  # likelihood ratio
+  ratio_obs_total <- calc_ratio(y[1:nSites, 1:nVisits],
+                                y_exp[1:nSites, 1:nVisits])
+  ratio_rep_total <- calc_ratio(y_rep[1:nSites, 1:nVisits],
+                                y_exp[1:nSites, 1:nVisits])
+  ratio_rep_latent_total <- calc_ratio(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
+  
+  # freeman tukey
+  tukey_obs_total <- calc_tukey(y[1:nSites, 1:nVisits],
+                                y_exp[1:nSites, 1:nVisits])
+  tukey_rep_total <- calc_tukey(y_rep[1:nSites, 1:nVisits],
+                                y_exp[1:nSites, 1:nVisits])
+  tukey_rep_latent_total <- calc_tukey(y_rep_latent[1:nSites, 1:nVisits],
+                                       y_exp_rep[1:nSites, 1:nVisits])
+  
+  # chi-squared z
+  chi_z_obs_total <- calc_chi_v(z[1:nSites],
+                            psi[1:nSites])
+  chi_z_rep_total <- calc_chi_v(z_rep[1:nSites],
+                            psi[1:nSites])
+  
+  
+  # freeman tukey z
+  tukey_z_obs_total <- calc_tukey_v(z[1:nSites],
+                                psi[1:nSites])
+  tukey_z_rep_total <- calc_tukey_v(z_rep[1:nSites],
+                                psi[1:nSites])
+  
+})
 
 ######################################
 # functions for discrepancy measures #
@@ -441,6 +537,22 @@ calc_chi <- nimbleFunction(
     return(sum(chi_out))
   }
 )
+
+calc_chi_v <- nimbleFunction(
+  
+  run = function(y = double(1), 
+                 y_exp = double(1))
+  {
+    returnType(double(0))
+    
+    # calculate chi squared discrepancy measure
+    chi_out <- (y - y_exp) ^ 2 / (y + 1e-6)
+    
+    return(sum(chi_out))
+  }
+)
+
+
 
 calc_ratio <- nimbleFunction(
   
@@ -461,6 +573,21 @@ calc_tukey <- nimbleFunction(
   
   run = function(y = double(2), 
                  y_exp = double(2))
+  {
+    returnType(double(0))
+    
+    # calculate freeman tukey discrepancy measure
+    tukey_out <- (sqrt(y) - sqrt(y_exp)) ^ 2
+    
+    return(sum(tukey_out))
+  }
+)
+
+
+calc_tukey_v <- nimbleFunction(
+  
+  run = function(y = double(1), 
+                 y_exp = double(1))
   {
     returnType(double(0))
     
