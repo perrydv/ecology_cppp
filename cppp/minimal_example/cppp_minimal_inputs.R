@@ -171,6 +171,7 @@ discrepancyFunctionsArgs <- list(list(nVisits = nVisits),
                                  list())
 
 
+# calculate discrepancies
 calcDiscrepanciesFun <- calcDiscrepancies(model,
                                           dataNames,
                                           paramNames,
@@ -178,4 +179,9 @@ calcDiscrepanciesFun <- calcDiscrepancies(model,
                                           discrepancyFunctions, 
                                           discrepancyFunctionsArgs)
 
-out <- calcDiscrepanciesFun$run(MCMCOutput[1:5, ])
+out_disc <- calcDiscrepanciesFun$run(MCMCOutput[1:5, ])
+
+# calculate PPP
+out_ppp <- calculatePPP(MCMCOutput[1:5, ],
+                        calcDiscrepanciesFun, 
+                        returnDiscrepancies = TRUE)
