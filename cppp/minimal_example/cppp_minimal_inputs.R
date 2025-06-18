@@ -1,5 +1,8 @@
 library(nimble)
 
+# load CPPP functions
+source("cppp/sally_code/calculateCPPP.R")
+
 # load functions to simulate data
 source("simulate_data.R")
 
@@ -76,7 +79,7 @@ chisqDiscFunction <- nimbleFunction(
   setup = function(model, discrepancyFunctionsArgs){
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
   },
-  run = function(){
+  run = function() {
     
     # get y_exp
     y_exp <- model$z * model$p * nVisits
@@ -86,6 +89,62 @@ chisqDiscFunction <- nimbleFunction(
     
     returnType(double(0)) 
     return(sum(chi_out))
+  }
+)
+
+## ratio discrepancy function
+ratioDiscFunction <- nimbleFunction(
+  contains = discrepancyFunction_BASE,
+  setup = function(model, discrepancyFunctionsArgs){
+    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
+  },
+  run = function() {
+    
+    # get y_exp
+    y_exp <- model$z * model$p * nVisits
+    
+    # calculate likelihood ratio discrepancy measure
+    ratio_out <- 2 * (model$y * log((model$y + 1e-6) / 
+                                      (y_exp + 1e-6)) + (nVisits - model$y) * 
+                        log((nVisits - model$y + 1e-6) / 
+                              (nVisits - y_exp + 1e-6)))
+    
+    returnType(double(0)) 
+    return(sum(ratio_out))
+  }
+)
+
+## tukey discrepancy function
+tukeyDiscFunction <- nimbleFunction(
+  contains = discrepancyFunction_BASE,
+  setup = function(model, discrepancyFunctionsArgs){
+    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
+  },
+  run = function() {
+    
+    # get y_exp
+    y_exp <- model$z * model$p * nVisits
+    
+    # calculate freeman tukey discrepancy measure
+    tukey_out <- (sqrt(model$y) - sqrt(y_exp)) ^ 2
+    
+    returnType(double(0)) 
+    return(sum(tukey_out))
+  }
+)
+
+## deviance discrepancy function
+devianceDiscFunction <- nimbleFunction(
+  contains = discrepancyFunction_BASE,
+  setup = function(model, discrepancyFunctionsArgs){
+  },
+  run = function() {
+    
+    dev_out <- -2 * 
+      log(dbinom(model$y, nVisits, model$z * model$p) + 1e-6)
+    
+    returnType(double(0)) 
+    return(sum(dev_out))
   }
 )
 
@@ -104,15 +163,19 @@ simNodes <- c("z", "y")
 paramNames <- c("p", "psi", "z")
 simNodes <- "y"
 
-discrepancyFunctions <- list(chisqDiscFunction)
-discrepancyFunctionsArgs <- list(list(nVisits = nVisits))
+discrepancyFunctions <- list(chisqDiscFunction, ratioDiscFunction,
+                             tukeyDiscFunction, devianceDiscFunction)
+discrepancyFunctionsArgs <- list(list(nVisits = nVisits),
+                                 list(nVisits = nVisits),
+                                 list(nVisits = nVisits),
+                                 list())
 
 
 calcDiscrepanciesFun <- calcDiscrepancies(model,
                                           dataNames,
                                           paramNames,
                                           simNodes,
-                                          discrepancyFunctions, ## Could be one nimbleFunction or a list of them
+                                          discrepancyFunctions, 
                                           discrepancyFunctionsArgs)
 
 out <- calcDiscrepanciesFun$run(MCMCOutput[1:5, ])
