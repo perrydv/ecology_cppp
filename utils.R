@@ -20,6 +20,13 @@ calc_pvalues <- function(n_measures, samples) {
   vec[8] <- mean(
     samples[, "tukey_rep_latent_total"] > samples[, "tukey_obs_total"]
   )
+  vec[9] <- mean(
+    samples[, "chi_z_rep_total"] > samples[, "chi_z_obs_total"]
+  )
+  
+  vec[10] <- mean(
+    samples[, "tukey_z_rep_total"] > samples[, "tukey_z_obs_total"]
+  )
   
   return(vec)
 }
