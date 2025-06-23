@@ -36,6 +36,13 @@ y <- simulate_betabinomial(params = list(psi = psi, p = p),
 constants <- list(nSites = nSites, nVisits = nVisits)
 model_uncompiled <- nimbleModel(model_minimal, constants = constants,
                                 data = list(y = y))
+
+inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
+                          z = pmin(y, 1)) 
+
+# add initial values
+model_uncompiled$setInits(inits(model_uncompiled$y))
+
 model <- compileNimble(model_uncompiled)
 
 # configure MCMC
@@ -47,11 +54,11 @@ mcmc <- buildMCMC(mcmc_conf)
 # compile mcmc
 compiled_mcmc <- compileNimble(mcmc, project = model)
 
-inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
-                          z = pmin(y, 1)) 
-
-# add initial values
-model$setInits(inits(model$y))
+# inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
+#                           z = pmin(y, 1)) 
+# 
+# # add initial values
+# model$setInits(inits(model$y))
 
 # generate samples
 MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
@@ -137,6 +144,7 @@ tukeyDiscFunction <- nimbleFunction(
 devianceDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
   setup = function(model, discrepancyFunctionsArgs){
+    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
   },
   run = function() {
     
@@ -155,20 +163,25 @@ devianceDiscFunction <- nimbleFunction(
 
 dataNames <- "y"
 
-# if *not* conditioning on latent state
-paramNames <- c("p", "psi")
-simNodes <- c("z", "y")
+condition <- TRUE
 
-# if conditioning on latent state
-paramNames <- c("p", "psi", "z")
-simNodes <- "y"
+if (condition) {
+  # if conditioning on latent state
+  paramNames <- c("p", "psi", "z")
+  simNodes <- "y"
+} else {
+  # if *not* conditioning on latent state
+  paramNames <- c("p", "psi")
+  simNodes <- c("z", "y")
+}
 
-discrepancyFunctions <- list(chisqDiscFunction, ratioDiscFunction,
+discrepancyFunctions <- list(#chisqDiscFunction, 
+                             ratioDiscFunction,
                              tukeyDiscFunction, devianceDiscFunction)
-discrepancyFunctionsArgs <- list(list(nVisits = nVisits),
+discrepancyFunctionsArgs <- list(#list(nVisits = nVisits),
                                  list(nVisits = nVisits),
                                  list(nVisits = nVisits),
-                                 list())
+                                 list(nVisits = nVisits))
 
 
 # calculate discrepancies
@@ -185,3 +198,23 @@ out_disc <- calcDiscrepanciesFun$run(MCMCOutput[1:5, ])
 out_ppp <- calculatePPP(MCMCOutput[1:5, ],
                         calcDiscrepanciesFun, 
                         returnDiscrepancies = TRUE)
+
+# run calibration
+origMCMCSamples <- MCMCOutput[1:5, ]
+mcmcConfFun <- NULL
+nCalibrationReplicates <- NULL
+MCMCcontrol = list(niter = 500,
+                   thin = 1,
+                   nburnin = 0)               
+returnSamples <- TRUE                            
+returnDiscrepancies <- TRUE
+calcDisc <- TRUE
+parallel <- FALSE 
+nCores <- 1
+
+out_cal <- runCalibration(model, dataNames, paramNames, 
+                          origMCMCSamples, mcmcConfFun,
+                          discrepancyFunctions, discrepancyFunctionsArgs,
+                          nCalibrationReplicates, MCMCcontrol,     
+                          returnSamples, returnDiscrepancies, calcDisc,
+                          parallel, nCores)
