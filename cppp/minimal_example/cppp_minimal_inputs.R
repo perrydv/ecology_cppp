@@ -19,7 +19,7 @@ nVisits <- 6
 
 # parameter values
 p <- 0.3
-rho <- 0.5
+rho <- 0
 psi <- 0.6
 
 # MCMC 
@@ -163,7 +163,7 @@ devianceDiscFunction <- nimbleFunction(
 
 dataNames <- "y"
 
-condition <- FALSE
+condition <- TRUE
 
 if (condition) {
   # if conditioning on latent state

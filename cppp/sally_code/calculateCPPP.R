@@ -240,9 +240,9 @@ runCalibration <- function(model,                   ## nimbleModel compiled
     # }
 
     # SP: 
-    if(is(model$CobjectInterface, "uninitializedField")){ ## The user provided n uncompiled a model that has not been compiled.   (We might need to check first if the user provided a compiled model!)
-        compileNimble(model)
-    }
+    # if(is(model$CobjectInterface, "uninitializedField")){ ## The user provided n uncompiled a model that has not been compiled.   (We might need to check first if the user provided a compiled model!)
+    #     compileNimble(model)
+    # }
 
 
     ## check for parallel computation
@@ -264,7 +264,9 @@ runCalibration <- function(model,                   ## nimbleModel compiled
     	model$getDependencies(paramNames, includeData = FALSE, self=FALSE)))
 	
 	# get param indices
-	paramIndices <- which(colnames(origMCMCSamples) == paramNames)
+	paramIndices <- which(
+	  colnames(origMCMCSamples) == model$expandNodeNames(paramNames)
+	  )
  
     ## calculate discrepancy 
     modelCalcDisc <- calcDiscrepancies(model                    = model,
