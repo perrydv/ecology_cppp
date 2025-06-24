@@ -163,7 +163,7 @@ devianceDiscFunction <- nimbleFunction(
 
 dataNames <- "y"
 
-condition <- TRUE
+condition <- FALSE
 
 if (condition) {
   # if conditioning on latent state
@@ -185,9 +185,11 @@ discrepancyFunctionsArgs <- list(#list(nVisits = nVisits),
 
 
 # calculate discrepancies
+paramIndices <- which(colnames(MCMCOutput) == paramNames)
 calcDiscrepanciesFun <- calcDiscrepancies(model,
                                           dataNames,
                                           paramNames,
+                                          paramIndices,
                                           simNodes,
                                           discrepancyFunctions, 
                                           discrepancyFunctionsArgs)

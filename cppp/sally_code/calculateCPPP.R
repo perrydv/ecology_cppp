@@ -24,6 +24,7 @@ calcDiscrepancies <- nimbleFunction(
     setup = function(model,
                      dataNames,
                      paramNames,
+                     paramIndices,
                      simNodes,
                      discrepancyFunctions, ## Could be one nimbleFunction or a list of them
                      discrepancyFunctionsArgs){
@@ -78,7 +79,7 @@ calcDiscrepancies <- nimbleFunction(
 
         for(i in 1:nSamples){
             ## put MCMC values from sampled iteration in the model
-            values(model, paramNodes) <<- MCMCOutput[i, ] ## Question: Should we use MCMCOutput[i, paramIndices]?
+            values(model, paramNodes) <<- MCMCOutput[i, paramIndices] ## Question: Should we use MCMCOutput[i, paramIndices]?
 
             ## calculate 
             model$calculate(paramDependencies)
@@ -261,11 +262,15 @@ runCalibration <- function(model,                   ## nimbleModel compiled
     ##------------------------------------------------------------##
 	simNodes <- unique(c(model$expandNodeNames(dataNames), 
     	model$getDependencies(paramNames, includeData = FALSE, self=FALSE)))
+	
+	# get param indices
+	paramIndices <- which(colnames(origMCMCSamples) == paramNames)
  
     ## calculate discrepancy 
     modelCalcDisc <- calcDiscrepancies(model                    = model,
                                         dataNames               = dataNames,
                                         paramNames              = paramNames,
+                                       paramIndices = paramIndices,
                                         simNodes 				= simNodes,
                                         discrepancyFunctions    = discrepancyFunctions,
                                         discrepancyFunctionsArgs = discrepancyFunctionsArgs)
@@ -316,7 +321,7 @@ runCalibration <- function(model,                   ## nimbleModel compiled
         ok <- TRUE
 
         ## 1) put values in model and simulate  data from the model posterior predictive
-        check <- try(cSetAndSimPP$run(origMCMCSamples[rowsToUse[r], ]))  
+        check <- try(cSetAndSimPP$run(origMCMCSamples[rowsToUse[r], paramIndices]))  
         if(inherits(check, 'try-error')) {
             warning(paste0("problem setting samples from row ", rowsToUse[r]))
             ok <- FALSE
