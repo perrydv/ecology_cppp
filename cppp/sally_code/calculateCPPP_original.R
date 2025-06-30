@@ -24,7 +24,6 @@ calcDiscrepancies <- nimbleFunction(
     setup = function(model,
                      dataNames,
                      paramNames,
-                     paramIndices,
                      simNodes,
                      discrepancyFunctions, ## Could be one nimbleFunction or a list of them
                      discrepancyFunctionsArgs){
@@ -64,8 +63,6 @@ calcDiscrepancies <- nimbleFunction(
 
     },
     run = function(MCMCOutput = double(2)){
-      
-      #browser()
 
         origDataValues  <- values(model, dataNodes)
         origParamValues <- values(model, paramNodes)
@@ -79,7 +76,7 @@ calcDiscrepancies <- nimbleFunction(
 
         for(i in 1:nSamples){
             ## put MCMC values from sampled iteration in the model
-            values(model, paramNodes) <<- MCMCOutput[i, paramIndices] ## Question: Should we use MCMCOutput[i, paramIndices]?
+            values(model, paramNodes) <<- MCMCOutput[i, ] ## Question: Should we use MCMCOutput[i, paramIndices]?
 
             ## calculate 
             model$calculate(paramDependencies)
@@ -171,9 +168,9 @@ setAndSimNodes <- nimbleFunction(
         model$simulate(simNodes, includeData = TRUE)
     })
 
-runCalibration <- function(model,                   ## nimbleModel compiled
+runCalibration <- function(model,                   ## name of the uncompiled nimbleModel 
                            dataNames,               ## names of data nodes to simulate into
-                           paramNames,              ## names of data nodes to simulate into
+                           paramNames,              ## names of parameter
                            origMCMCSamples,         ## originalMCMC samples
                            mcmcConfFun = NULL,
                            discrepancyFunctions = NULL,
@@ -212,16 +209,18 @@ runCalibration <- function(model,                   ## nimbleModel compiled
     ## if paramNames is null use columns of originMCMCSamples (must be provided) 
     if(is.null(paramNames)) {
         print("Defaulting `paramNames` to `origMCMCMSamples' column names")
-        # paramNames <- colnames(origMCMCSamples)
+        paramNames <- colnames(origMCMCSamples)
     } 
 
-    ## check that paramNames are in the model and are stochastics
+     ## check that paramNames are in the model and are stochastics
     testParamNames <- all(model$expandNodeNames(paramNames) %in%
         model$getNodeNames())
     if(testParamNames == FALSE){
         stop(paste("paramNames are not node names in", model, "."))
     }
 
+    ## Make sure origMCMCsamples contains only samples for nodes in paramNames
+    origMCMCSamples <- origMCMCSamples[, model$expandNodeNames(paramNames)]
 
     mcmcConfFun <- if(is.null(mcmcConfFun))   function(model) configureMCMC(model, monitors = paramNames, print = FALSE) else mcmcConfFun 
 
@@ -237,14 +236,10 @@ runCalibration <- function(model,                   ## nimbleModel compiled
     nburnin <- if(is.null(MCMCcontrol$nburnin)) 0       else MCMCcontrol$nburnin
 
     
-    # if(!inherits(model, "RmodelBaseClass")){
-    #     stop("model is not an Rmodel")
-    # }
-
-    # SP: 
-    # if(is(model$CobjectInterface, "uninitializedField")){ ## The user provided n uncompiled a model that has not been compiled.   (We might need to check first if the user provided a compiled model!)
-    #     compileNimble(model)
-    # }
+    # SP: check if model is compiled
+    if(is(model$CobjectInterface, "uninitializedField")){ ## The user provided n uncompiled a model that has not been compiled.   (We might need to check first if the user provided a compiled model!)
+        compileNimble(model)
+    }
 
 
     ## check for parallel computation
@@ -264,17 +259,11 @@ runCalibration <- function(model,                   ## nimbleModel compiled
     ##------------------------------------------------------------##
 	simNodes <- unique(c(model$expandNodeNames(dataNames), 
     	model$getDependencies(paramNames, includeData = FALSE, self=FALSE)))
-	
-	# get param indices
-	paramIndices <- which(
-	  colnames(origMCMCSamples) == model$expandNodeNames(paramNames)
-	)
  
     ## calculate discrepancy 
     modelCalcDisc <- calcDiscrepancies(model                    = model,
                                         dataNames               = dataNames,
                                         paramNames              = paramNames,
-                                        paramIndices            = paramIndices,
                                         simNodes 				= simNodes,
                                         discrepancyFunctions    = discrepancyFunctions,
                                         discrepancyFunctionsArgs = discrepancyFunctionsArgs)
@@ -283,7 +272,7 @@ runCalibration <- function(model,                   ## nimbleModel compiled
 
 
     originalOutput <- calculatePPP(MCMCSamples             = origMCMCSamples,
-                                    calcDiscrepanciesFun    = cModelCalcDisc, 
+                                   calcDiscrepanciesFun    = cModelCalcDisc, 
                                     returnDiscrepancies     = returnDiscrepancies)
 
     observedPPP <- originalOutput$PPP
@@ -303,8 +292,7 @@ runCalibration <- function(model,                   ## nimbleModel compiled
 
     ##-------------------##
     ## SP: this is reapeated - same nodes are needed to simulate from the pp to compute discrepancies
-    simNodes <- unique(c(model$expandNodeNames(dataNames), 
-                         model$getDependencies(paramNames, includeData = FALSE, self=FALSE)))
+    simNodes <- unique(c(model$expandNodeNames(dataNames), model$getDependencies(paramNames, includeData = FALSE, self=FALSE)))
 	##-------------------##
     
     setAndSimPP <- setAndSimNodes(model = model, 
@@ -325,7 +313,7 @@ runCalibration <- function(model,                   ## nimbleModel compiled
         ok <- TRUE
 
         ## 1) put values in model and simulate  data from the model posterior predictive
-        check <- try(cSetAndSimPP$run(origMCMCSamples[rowsToUse[r], paramIndices]))  
+        check <- try(cSetAndSimPP$run(origMCMCSamples[rowsToUse[r], ]))  
         if(inherits(check, 'try-error')) {
             warning(paste0("problem setting samples from row ", rowsToUse[r]))
             ok <- FALSE

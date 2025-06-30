@@ -1,7 +1,7 @@
 library(nimble)
 
 # load CPPP functions
-source("cppp/sally_code/calculateCPPP.R")
+source("cppp/sally_code/calculateCPPP_original.R")
 
 ## Read newcomb data
 data <- list(y = read.table("cppp/newcomb_example/light.txt")$V1)
@@ -70,12 +70,12 @@ minObservation <- nimbleFunction(
 )
 
 
-test <- minObservation(model = model, 
-                       discrepancyFunctionsArgs = list(dataNames = names(data)))
+# test <- minObservation(model = model, 
+#                        discrepancyFunctionsArgs = list(dataNames = names(data)))
 
-test$run()
-ctest <- compileNimble(test, project = model)
-ctest$run()
+# test$run()
+# ctest <- compileNimble(test, project = model)
+# ctest$run()
 ##############
 
 ## make a function to call R sort function in nimble
@@ -100,14 +100,14 @@ asymmetryDisc <- nimbleFunction(
 })
 
 
-test2 <- asymmetryDisc(model = model, 
-                       discrepancyFunctionsArgs = 
-                       list(dataNames = names(data), 
-                            meanParam = "mu"))
+# test2 <- asymmetryDisc(model = model, 
+#                        discrepancyFunctionsArgs = 
+#                        list(dataNames = names(data), 
+#                             meanParam = "mu"))
 
-test2$run()
-ctest2 <- compileNimble(test2, project = model)
-ctest2$run()
+# test2$run()
+# ctest2 <- compileNimble(test2, project = model)
+# ctest2$run()
 
 ##################
 ## Set values to run CPPP
@@ -124,8 +124,8 @@ discrepancyFunctionsArgs <- list(list(dataNames = names(data)),
                     meanParam = "mu"))
 
 
-nCalibrationReplicates <- 1000 
-nIterMCMC <- 200
+nCalibrationReplicates <- 10
+nIterMCMC <- 2
 
 ## Settings for MCMC
 MCMCcontrol <- list(niter   = nIterMCMC,
