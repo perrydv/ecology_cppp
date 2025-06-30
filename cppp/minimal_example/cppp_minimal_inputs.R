@@ -19,7 +19,7 @@ nVisits <- 6
 
 # parameter values
 p <- 0.3
-rho <- 0
+rho <- 0.5
 psi <- 0.6
 
 # MCMC 
@@ -36,13 +36,6 @@ y <- simulate_betabinomial(params = list(psi = psi, p = p),
 constants <- list(nSites = nSites, nVisits = nVisits)
 model_uncompiled <- nimbleModel(model_minimal, constants = constants,
                                 data = list(y = y))
-
-inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
-                          z = pmin(y, 1)) 
-
-# add initial values
-model_uncompiled$setInits(inits(model_uncompiled$y))
-
 model <- compileNimble(model_uncompiled)
 
 # configure MCMC
@@ -54,11 +47,11 @@ mcmc <- buildMCMC(mcmc_conf)
 # compile mcmc
 compiled_mcmc <- compileNimble(mcmc, project = model)
 
-# inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
-#                           z = pmin(y, 1)) 
-# 
-# # add initial values
-# model$setInits(inits(model$y))
+inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
+                          z = pmin(y, 1)) 
+
+# add initial values
+model$setInits(inits(model$y))
 
 # generate samples
 MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
@@ -98,6 +91,31 @@ chisqDiscFunction <- nimbleFunction(
     return(sum(chi_out))
   }
 )
+
+###################
+## conditioning on latent state
+paramNames <- c("p", "psi", "z")
+dataNames <- "y"
+
+simNodes <- unique(c(model$expandNodeNames(dataNames), 
+      model$getDependencies(paramNames, includeData = FALSE, self=FALSE)))
+
+## calculate discrepancy 
+modelCalcDisc <- calcDiscrepancies(model            = model,
+                                    dataNames       = dataNames,
+                                    paramNames      = paramNames,
+                                    simNodes        = simNodes,
+                                    discrepancyFunctions    = list(chisqDiscFunction),
+                                    discrepancyFunctionsArgs = list(nVisits = 6))
+
+cModelCalcDisc <- compileNimble(modelCalcDisc, project = model)
+
+
+
+
+
+
+#################
 
 ## ratio discrepancy function
 ratioDiscFunction <- nimbleFunction(
@@ -144,7 +162,7 @@ tukeyDiscFunction <- nimbleFunction(
 devianceDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
   setup = function(model, discrepancyFunctionsArgs){
-    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
+      nVisits <- discrepancyFunctionsArgs[["nVisits"]]
   },
   run = function() {
     
@@ -163,36 +181,47 @@ devianceDiscFunction <- nimbleFunction(
 
 dataNames <- "y"
 
-condition <- TRUE
+# if *not* conditioning on latent state
+paramNames <- c("p", "psi")
+simNodes <- c("z", "y")
 
-if (condition) {
-  # if conditioning on latent state
-  paramNames <- c("p", "psi", "z")
-  simNodes <- "y"
-} else {
-  # if *not* conditioning on latent state
-  paramNames <- c("p", "psi")
-  simNodes <- c("z", "y")
-}
+# if conditioning on latent state
+paramNames <- c("p", "psi", "z")
+simNodes <- "y"
 
-discrepancyFunctions <- list(#chisqDiscFunction, 
-                             ratioDiscFunction,
+## SP: calcDiscrepancies is a nimbleFunciton that uses the model
+## to calculate a discrepancy. It was set up to accept a list of discrepancies
+
+## SP: this is the list of discrepancies
+discrepancyFunctions <- list(chisqDiscFunction, ratioDiscFunction,
                              tukeyDiscFunction, devianceDiscFunction)
-discrepancyFunctionsArgs <- list(#list(nVisits = nVisits),
+
+## SP: here we have a list where each element is a list of 
+## arguments to be passed to each discrepancy in the discrepancyFunctions
+## list above
+
+discrepancyFunctionsArgs <- list(list(nVisits = nVisits),
                                  list(nVisits = nVisits),
                                  list(nVisits = nVisits),
                                  list(nVisits = nVisits))
 
 
 # calculate discrepancies
-paramIndices <- which(colnames(MCMCOutput) == paramNames)
 calcDiscrepanciesFun <- calcDiscrepancies(model,
                                           dataNames,
                                           paramNames,
-                                          paramIndices,
                                           simNodes,
                                           discrepancyFunctions, 
                                           discrepancyFunctionsArgs)
+
+cModelCalcDisc <- compileNimble(calcDiscrepanciesFun, 
+                                project = model)
+
+
+originalOutput <- calculatePPP(MCMCSamples             = origMCMCSamples,
+                                calcDiscrepanciesFun    = cModelCalcDisc, 
+                                returnDiscrepancies     = returnDiscrepancies)
+
 
 out_disc <- calcDiscrepanciesFun$run(MCMCOutput[1:5, ])
 
@@ -200,23 +229,3 @@ out_disc <- calcDiscrepanciesFun$run(MCMCOutput[1:5, ])
 out_ppp <- calculatePPP(MCMCOutput[1:5, ],
                         calcDiscrepanciesFun, 
                         returnDiscrepancies = TRUE)
-
-# run calibration
-origMCMCSamples <- MCMCOutput[1:5, ]
-mcmcConfFun <- NULL
-nCalibrationReplicates <- NULL
-MCMCcontrol = list(niter = 500,
-                   thin = 1,
-                   nburnin = 0)               
-returnSamples <- TRUE                            
-returnDiscrepancies <- TRUE
-calcDisc <- TRUE
-parallel <- FALSE 
-nCores <- 1
-
-out_cal <- runCalibration(model, dataNames, paramNames, 
-                          origMCMCSamples, mcmcConfFun,
-                          discrepancyFunctions, discrepancyFunctionsArgs,
-                          nCalibrationReplicates, MCMCcontrol,     
-                          returnSamples, returnDiscrepancies, calcDisc,
-                          parallel, nCores)
