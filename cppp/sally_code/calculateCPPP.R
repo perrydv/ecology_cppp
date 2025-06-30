@@ -266,13 +266,13 @@ runCalibration <- function(model,                   ## nimbleModel compiled
 	# get param indices
 	paramIndices <- which(
 	  colnames(origMCMCSamples) == model$expandNodeNames(paramNames)
-	  )
+	)
  
     ## calculate discrepancy 
     modelCalcDisc <- calcDiscrepancies(model                    = model,
                                         dataNames               = dataNames,
                                         paramNames              = paramNames,
-                                       paramIndices = paramIndices,
+                                        paramIndices            = paramIndices,
                                         simNodes 				= simNodes,
                                         discrepancyFunctions    = discrepancyFunctions,
                                         discrepancyFunctionsArgs = discrepancyFunctionsArgs)

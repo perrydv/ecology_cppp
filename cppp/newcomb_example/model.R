@@ -40,12 +40,6 @@ samples <- runMCMC(cMcmc, niter = 5000, nburnin = 1000)
 ##	saveRDS(samples, file = paste0(dirExample, "/MCMCSamples.rds"))
 ## origMCMCSamples <- readRDS(paste0(dirExample, "/MCMCSamples.rds"))
 
-## Set values to run CPPP
-origMCMCSamples <- samples
-paramNames 		<- colnames(origMCMCSamples)
-dataNames  		<- names(data)
-mcmcConfFun	 	<- NULL
-
 
 
 ##------------------------------------##
@@ -116,4 +110,57 @@ ctest2 <- compileNimble(test2, project = model)
 ctest2$run()
 
 ##################
+## Set values to run CPPP
+origMCMCSamples <- samples
+paramNames    <- colnames(origMCMCSamples)
+dataNames     <- names(data)
+mcmcConfFun   <- NULL
+
+
+## discrepancy functions
+discrepancyFunctions <- list(minObservation, asymmetryDisc)
+discrepancyFunctionsArgs <- list(list(dataNames = names(data)), 
+                 list(dataNames = names(data), 
+                    meanParam = "mu"))
+
+
+nCalibrationReplicates <- 1000 
+nIterMCMC <- 200
+
+## Settings for MCMC
+MCMCcontrol <- list(niter   = nIterMCMC,
+                    nburnin = 0, 
+                    thin  = 1)
+
+## Flags
+returnSamples <- TRUE                            
+returnDiscrepancies <- TRUE
+calcDisc <- TRUE
+parallel <- FALSE 
+nCores <- 1
+
+
+
+## run calibration
+time <- system.time(
+  out <- runCalibration(## this comes from model.R file
+                      model = model,
+                      dataNames = dataNames,
+                      paramNames = paramNames,
+                      origMCMCSamples = origMCMCSamples,         
+                      mcmcConfFun = mcmcConfFun,
+                      discrepancyFunctions = discrepancyFunctions, 
+                      discrepancyFunctionsArgs = discrepancyFunctionsArgs,
+                      ## this comes from args or defaults
+                      nCalibrationReplicates = nCalibrationReplicates,
+                      MCMCcontrol = MCMCcontrol,                  
+                      returnSamples = returnSamples,
+                      returnDiscrepancies = returnDiscrepancies,
+                      calcDisc = calcDisc, 
+                      parallel = parallel, 
+                      nCores   = nCores) 
+)
+out$time <- time
+## save results
+
 
