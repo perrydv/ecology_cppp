@@ -1,7 +1,7 @@
 library(nimble)
 
 # load CPPP functions
-source("cppp/sally_code/calculateCPPP.R")
+source("cppp/sally_code/calculateCPPP_original.R")
 
 # load functions to simulate data
 source("simulate_data.R")
@@ -83,7 +83,6 @@ discrepancyFunction_BASE <- nimbleFunctionVirtual(
 ## makes the compiler throwing an error because 
 ## z is a vector and p a scalar
 
-
 chisqDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
   setup = function(model, discrepancyFunctionsArgs){
@@ -124,53 +123,30 @@ chisqList = list(nVisits = nVisits,
                   latent_occ = "z", 
                   prob_detection = "p")
 
-test <- chisqDiscFunction(model = model_uncompiled, 
-                          discrepancyFunctionsArgs = chisqList)
+# test <- chisqDiscFunction(model = model_uncompiled, 
+#                           discrepancyFunctionsArgs = chisqList)
 
-## use uncompiled model for testing
-## make sure is initialized - use the same inits
 
-init_vals <- inits(model$y)
-model_uncompiled$setInits(init_vals)
-test$run()
+# ## use uncompiled model for testing
+# ## make sure is initialized - use the same inits
 
-## Since the discrepancy is a nimble function 
-## this needs to be compiled too. Once compiled, 
-## it will use the compiled model. The runCalibration() function 
-## compiles the discrepancies internally if they are not. 
+# init_vals <- inits(model$y)
+# model_uncompiled$setInits(init_vals)
+# test$run()
 
-ctest <- compileNimble(test, project = model)
+# ## Since the discrepancy is a nimble function 
+# ## this needs to be compiled too. Once compiled, 
+# ## it will use the compiled model. The runCalibration() function 
+# ## compiles the discrepancies internally if they are not. 
 
-model$setInits(init_vals)
-ctest$run()
+# ctest <- compileNimble(test, project = model)
+
+# model$setInits(init_vals)
+# ctest$run()
 
 ###################################################
 ## ratio discrepancy function
 ###################################################
-
-## Old discrepancy
-
-# ratioDiscFunction <- nimbleFunction(
-#   contains = discrepancyFunction_BASE,
-#   setup = function(model, discrepancyFunctionsArgs){
-#     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
-#   },
-#   run = function() {
-    
-#     # get y_exp
-#     y_exp <- model$z * model$p * nVisits
-    
-#     # calculate likelihood ratio discrepancy measure
-#     ratio_out <- 2 * (model$y * log((model$y + 1e-6) / 
-#                                       (y_exp + 1e-6)) + (nVisits - model$y) * 
-#                         log((nVisits - model$y + 1e-6) / 
-#                               (nVisits - y_exp + 1e-6)))
-    
-#     returnType(double(0)) 
-#     return(sum(ratio_out))
-#   }
-# )
-
 ratioDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
   setup = function(model, discrepancyFunctionsArgs){
@@ -213,28 +189,54 @@ ratioList = list(nVisits = nVisits,
                   latent_occ = "z", 
                   prob_detection = "p")
 
+################################# 
+### Testing discrepancy
+################################# 
 
-ratioTest <- ratioDiscFunction(model = model, 
-                               discrepancyFunctionsArgs = ratioList)
-init_vals <- inits(model$y)
-model_uncompiled$setInits(init_vals)
+# ratioTest <- ratioDiscFunction(model = model, 
+#                                discrepancyFunctionsArgs = ratioList)
+# init_vals <- inits(model$y)
+# model_uncompiled$setInits(init_vals)
 
-ratioTest$run()
+# ratioTest$run()
 
 
-cratioTest <- compileNimble(ratioTest, project = model)
-model$setInits(init_vals)
+# cratioTest <- compileNimble(ratioTest, project = model)
+# model$setInits(init_vals)
 
-cratioTest$run()
+# cratioTest$run()
 ####################
+
+
 ###################
 # function inputs #
 ###################
-## this assumes that latent states 
-## are not simulated each time
 
-dataNames <- "y"
-paramNames    <- colnames(MCMCOutput)
+condition_on_latent_states <- TRUE
+
+if (condition_on_latent_states) {
+  # if conditioning on latent state
+  ## SP: you can provide z in paramNames
+  ## this assumes that you use values from the original MCMC
+  paramNames <- c("p", "psi", "z")
+  dataNames <- "y"
+} else {
+  # if *not* conditioning on latent state
+  ## SP: just omit z from paramNames - you can check which notes
+  ## the runCalibration() function simulates just 
+  ## checking which are the simNodes 
+
+  ## SP - a note: the runCalibration function assumed that 
+  ## the matrix of MCMC samples contains only values of 
+  ## sampled for parameters in paramNames
+  paramNames <- c("p", "psi")
+  dataNames <- "y"
+}
+
+## Check which are simulated notes
+simNodes <- unique(c(model$expandNodeNames(dataNames), 
+  model$getDependencies(paramNames, includeData = FALSE, self=FALSE)))
+
 
 discrepancyFunctions <- list(chisqDiscFunction, 
                              ratioDiscFunction)
@@ -243,7 +245,15 @@ discrepancyFunctionsArgs <- list(chisqList,
 
 
 # run calibration
-origMCMCSamples <- MCMCOutput[1:5, ]
+if (condition_on_latent_states) {
+  origMCMCSamples <- MCMCOutput[1:5, ]
+  } else {
+
+  ## paramNames are matched the column of the MCMc samples matrix
+  ## SP: I added an internal line of code that makes sure of this
+  origMCMCSamples <- MCMCOutput[1:5, c("p", "psi") ]
+}
+
 mcmcConfFun <- NULL
 nCalibrationReplicates <- NULL
 MCMCcontrol = list(niter = 500,
@@ -255,7 +265,9 @@ calcDisc <- TRUE
 parallel <- FALSE 
 nCores <- 1
 
-out_cal <- runCalibration(model = model, 
+## Pass the name of the uncompiled model 
+
+out_cal <- runCalibration(model = model_uncompiled, 
                           dataNames, 
                           paramNames, 
                           origMCMCSamples, 
