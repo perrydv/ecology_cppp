@@ -194,12 +194,12 @@ ratioList = list(nVisits = nVisits,
 ### Testing discrepancy
 ################################# 
 
-# ratioTest <- ratioDiscFunction(model = model,
-#                                discrepancyFunctionsArgs = ratioList)
+ratioTest <- ratioDiscFunction(model = model,
+                               discrepancyFunctionsArgs = ratioList)
 # init_vals <- inits(model$y)
 # model_uncompiled$setInits(init_vals)
 # 
-# ratioTest$run()
+ratioTest$run()
 
 
 # cratioTest <- compileNimble(ratioTest, project = model)

@@ -24,6 +24,7 @@ calcDiscrepancies <- nimbleFunction(
     setup = function(model,
                      dataNames,
                      paramNames,
+                     paramIndices,
                      simNodes,
                      discrepancyFunctions, ## Could be one nimbleFunction or a list of them
                      discrepancyFunctionsArgs){
@@ -76,7 +77,7 @@ calcDiscrepancies <- nimbleFunction(
 
         for(i in 1:nSamples){
             ## put MCMC values from sampled iteration in the model
-            values(model, paramNodes) <<- MCMCOutput[i, ] ## Question: Should we use MCMCOutput[i, paramIndices]?
+            values(model, paramNodes) <<- MCMCOutput[i, paramIndices] ## Question: Should we use MCMCOutput[i, paramIndices]?
 
             ## calculate 
             model$calculate(paramDependencies)
@@ -361,4 +362,169 @@ runCalibration <- function(model,                   ## name of the uncompiled ni
 
 
     return(out)
+}
+
+
+# run calibration for simulations that takes compiled arguments
+runCalibration_sim <- function(model,                   ## name of the uncompiled nimbleModel 
+                           dataNames,               ## names of data nodes to simulate into
+                           paramNames,              ## names of parameter
+                           origMCMCSamples,         ## originalMCMC samples
+                           cModelCalcDisc, cMcmc, cSetAndSimPP,
+                           nCalibrationReplicates,
+                           MCMCcontrol = list(niter = 500,
+                                              thin = 1,
+                                              nburnin = 0),                  
+                           returnSamples = TRUE,                            
+                           returnDiscrepancies = TRUE,
+                           calcDisc = TRUE, 
+                           parallel = FALSE, 
+                           nCores = 1) {
+  
+  
+  
+  ## if dataNames is null use nodes in the model with data flag 
+  if(is.null(dataNames)) {
+    print("Defaulting `dataNames` to model nodes flagged as data.")
+    dataNames <- model$getNodeNames(dataOnly = TRUE)
+  } 
+  
+  ## chech that dataNames are in the model and are stochastics
+  testDataNames <- all(model$expandNodeNames(dataNames) %in% model$getNodeNames(stochOnly=TRUE))
+  if(testDataNames == FALSE){
+    stop(paste("dataNames", dataNames,
+               "is not the name a stochastic node in the model."))
+  }
+  
+  
+  if(is.null(origMCMCSamples)){
+    stop(paste("provide origMCMCSamples."))
+    
+  }
+  
+  ## if paramNames is null use columns of originMCMCSamples (must be provided) 
+  if(is.null(paramNames)) {
+    print("Defaulting `paramNames` to `origMCMCMSamples' column names")
+    paramNames <- colnames(origMCMCSamples)
+  } 
+  
+  ## check that paramNames are in the model and are stochastics
+  testParamNames <- all(model$expandNodeNames(paramNames) %in%
+                          model$getNodeNames())
+  if(testParamNames == FALSE){
+    stop(paste("paramNames are not node names in", model, "."))
+  }
+  
+  ## Make sure origMCMCsamples contains only samples for nodes in paramNames
+  origMCMCSamples <- origMCMCSamples[, model$expandNodeNames(paramNames)]
+  
+  ## number of calibration replicates (to estimate ppp null distribution)
+  if(is.null(nCalibrationReplicates)){
+    nCalibrationReplicates <- 100
+    print(paste("Defaulting to ", nCalibrationReplicates, " simulated PPP values."))
+  }
+  
+  ## Default MCMC settings for ppp calculation
+  niter   <- if(is.null(MCMCcontrol$niter))   200     else MCMCcontrol$niter
+  thin    <- if(is.null(MCMCcontrol$thin))    1       else MCMCcontrol$thin
+  nburnin <- if(is.null(MCMCcontrol$nburnin)) 0       else MCMCcontrol$nburnin
+  
+  
+  # SP: check if model is compiled
+  if(is(model$CobjectInterface, "uninitializedField")){ ## The user provided n uncompiled a model that has not been compiled.   (We might need to check first if the user provided a compiled model!)
+    compileNimble(model)
+  }
+  
+  
+  ## check for parallel computation
+  
+  if(parallel){
+    libError <-  try(library('parallel'), silent = TRUE)
+    if(inherits(libError, 'try-error') && nCores > 1){
+      warning("The 'parallel' package must be installed to use multiple cores for CPPP calculation. Defaulting to one core.")
+      parallel <- FALSE
+      nCores <- 1
+    }   
+  }
+  
+  
+  ##------------------------------------------------------------##
+  ## Get discrepancies/PPP from original MCMC samples
+  ##------------------------------------------------------------##
+  simNodes <- unique(c(model$expandNodeNames(dataNames), 
+                       model$getDependencies(paramNames, includeData = FALSE, 
+                                             self = FALSE)))
+  
+  
+  originalOutput <- calculatePPP(MCMCSamples             = origMCMCSamples,
+                                 calcDiscrepanciesFun    = cModelCalcDisc, 
+                                 returnDiscrepancies     = returnDiscrepancies)
+  
+  observedPPP <- originalOutput$PPP
+  if(returnDiscrepancies) observedDiscrepancies <- originalOutput$discrepancies
+  
+  ##------------------------------------------------------------##
+  ## Set up calibration replicates
+  ##------------------------------------------------------------##
+  
+  ## if nCalibrationReplicates is less than nrow(origMCMCSamples), 
+  ## we want to evenly space or randomly choose rows
+  rowsToUse <- floor( seq(1, nrow(origMCMCSamples), length=nCalibrationReplicates) )
+  resultsList <- vector(mode = 'list', length = nCalibrationReplicates)
+  
+  ## use the same objects
+  for(r in 1:nCalibrationReplicates){
+    
+    thisResult <- list(samples = NULL, PPP = NULL)
+    ok <- TRUE
+    
+    ## 1) put values in model and simulate  data from the model posterior predictive
+    check <- try(cSetAndSimPP$run(origMCMCSamples[rowsToUse[r], ]))  
+    if(inherits(check, 'try-error')) {
+      warning(paste0("problem setting samples from row ", rowsToUse[r]))
+      ok <- FALSE
+    }
+    
+    if(ok) {
+      ## 3) run mcmc to obtain replicated MCMC samples
+      replicatedMCMCsamples <- try(runMCMC(cMcmc, niter = niter, nburnin = nburnin, thin = thin))
+      # use either mcmc$run(niter) or runMCMC(mcmc, niter)
+      if(inherits(replicatedMCMCsamples, 'try-error')) {
+        warning("put nice warning here")
+        ok <- FALSE
+      }
+    }
+    
+    if(ok) {
+      if(returnSamples) {
+        thisResult$samples <- replicatedMCMCsamples ## At this step, we could replace the scheme with MCMCReplicate object (or MCMCresult from compareMCMCs.  We want something like this.  Even just a list of lists.
+      }
+      ## 4) calculate PPP
+      if(calcDisc) {
+        thisResult$PPP <- try(calculatePPP(MCMCSamples              = replicatedMCMCsamples,
+                                           calcDiscrepanciesFun     = cModelCalcDisc, 
+                                           returnDiscrepancies      = returnDiscrepancies)) ## contains discrepancies and PPP
+      }
+    }
+    
+    resultsList[[r]] <- thisResult
+  }
+  
+  out <- list()
+  
+  out$obsPPP <- observedPPP 
+  out$repPPP <- sapply(resultsList, function(x) x$PPP$PPP)
+  
+  if(returnDiscrepancies){
+    
+    out$obsDisc <- observedDiscrepancies
+    out$repDisc <- sapply(resultsList, function(x) x$PPP$discrepancies, simplify  = FALSE)
+  }
+  
+  if(returnSamples){
+    out$replicatedMCMCSamples   <- sapply(resultsList, function(x) x$samples, simplify  = FALSE)
+  }
+  
+  
+  return(out)
 }

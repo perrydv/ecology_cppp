@@ -72,59 +72,90 @@ mcmc_conf <- configureMCMC(model_uncompiled, monitors = c("psi", "p", "z"))
 mcmc <- buildMCMC(mcmc_conf)
 
 # compile mcmc
-compiled_mcmc <- compileNimble(mcmc, project = model)
+compiled_mcmc <- compileNimble(mcmc, project = model, resetFunctions = TRUE)
 
-# simulate n datasets
-for (n in 1:nDatasets) {
+condition_on_latent_states <- c(TRUE, FALSE)
+
+# calculate for conditioning vs. not conditioning on latent state
+for (j in 1:length(condition_on_latent_states)) {
   
-  # loop through rho
-  for (i in 1:length(rho)) {
-    
-    # simulate data
-    y <- simulate_betabinomial(params = list(psi = psi, p = p),
-                               nSites, nVisits, rho[i])
-    
-    # add data
-    model_uncompiled$y <- y
-    model$y <- y
-    
-    # add inits
-    inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
-                              z = pmin(y, 1)) 
-    
-    model_uncompiled$setInits(inits(model_uncompiled$y))
-    model$setInits(inits(model$y))
-    
-    # generate samples
-    MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
-                          nburnin = nburnin, thin = thin)
-    
-    ###############
-    # cppp inputs #
-    ###############
-    
+  if (condition_on_latent_states[j]) {
+    # if conditioning on latent state
     dataNames <- "y"
+    paramNames <- c("p", "psi", "z")
+    simNodes <- unique(c(model$expandNodeNames(dataNames), 
+                         model$getDependencies(paramNames, includeData = FALSE, 
+                                               self = FALSE)))
+    paramIndices <- 1:52
+  } else {
+    # if *not* conditioning on latent state
+    dataNames <- c("y", "z")
+    paramNames <- c("p", "psi")
+    simNodes <- unique(c(model$expandNodeNames(dataNames), 
+                         model$getDependencies(paramNames, includeData = FALSE, 
+                                               self = FALSE)))
+    paramIndices <- 1:2
+  }
+  
+  # create compiled objects for calculating ppp and cppp
+  modelCalcDisc <- calcDiscrepancies(model = model_uncompiled,
+                                     dataNames = dataNames,
+                                     paramNames = paramNames,
+                                     paramIndices = paramIndices,
+                                     simNodes = simNodes,
+                                     discrepancyFunctions = discrepancyFunctions,
+                                     discrepancyFunctionsArgs = discrepancyFunctionsArgs)
+  
+  cModelCalcDisc <- compileNimble(modelCalcDisc, project = model_uncompiled)
+  
+  setAndSimPP <- setAndSimNodes(model = model_uncompiled, 
+                                nodes = paramNames, 
+                                simNodes = simNodes)
+  
+  cSetAndSimPP <- compileNimble(setAndSimPP, project = model_uncompiled)
+  
+  # simulate n datasets
+  for (n in 1:nDatasets) {
     
-    condition_on_latent_states <- c(TRUE, FALSE)
-    
-    # calculate for conditioning vs. not conditioning on latent state
-    for (j in 1:length(condition_on_latent_states)) {
+    # loop through rho
+    for (i in 1:length(rho)) {
+      
+      # simulate data
+      y <- simulate_betabinomial(params = list(psi = psi, p = p),
+                                 nSites, nVisits, rho[i])
+      
+      # add data
+      model_uncompiled$y <- y
+      model$y <- y
+      
+      # add inits
+      inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
+                                z = pmin(y, 1)) 
+      
+      model_uncompiled$setInits(inits(model_uncompiled$y))
+      model$setInits(inits(model$y))
+      
+      # generate samples
+      MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
+                            nburnin = nburnin, thin = thin)
+      
+      ###############
+      # cppp inputs #
+      ###############
       
       if (condition_on_latent_states[j]) {
         # if conditioning on latent state
-        paramNames <- c("p", "psi", "z")
         samples <- MCMCOutput
       } else {
         # if *not* conditioning on latent state
-        paramNames <- c("p", "psi")
         samples <- MCMCOutput[, paramNames]
       }
       
       # run calibration
-      out_cal <- runCalibration(
+      out_cal <- runCalibration_sim(
         model = model_uncompiled, dataNames = dataNames, paramNames = paramNames, 
-        origMCMCSamples = samples, discrepancyFunctions = discrepancyFunctions, 
-        discrepancyFunctionsArgs = discrepancyFunctionsArgs,
+        origMCMCSamples = samples, cModelCalcDisc = cModelCalcDisc, 
+        cMcmc = compiled_mcmc, cSetAndSimPP = cSetAndSimPP,
         nCalibrationReplicates = nCalibrationReplicates,
         returnSamples = FALSE, returnDiscrepancies = FALSE) 
       
@@ -140,58 +171,81 @@ for (n in 1:nDatasets) {
 }
 
 
+
+
 data_ratio <- data.frame(
-  rho = c(rep(rho[1], 48), rep(rho[2], 48), rep(rho[3], 48), rep(rho[4], 48),
-          rep(rho[1], 48), rep(rho[2], 48), rep(rho[3], 48), rep(rho[4], 48)), 
-  ratio = c(cppp_out$true[1, 1:24, 1], ppp_out$true[1, 1:24, 1],
-            cppp_out$true[2, 1:24, 1], ppp_out$true[2, 1:24, 1],
-            cppp_out$true[3, 1:24, 1], ppp_out$true[3, 1:24, 1],
-            cppp_out$true[4, 1:24, 1], ppp_out$true[4, 1:24, 1],
-            cppp_out$false[1, 1:24, 1], ppp_out$false[1, 1:24, 1],
-            cppp_out$false[2, 1:24, 1], ppp_out$false[2, 1:24, 1],
-            cppp_out$false[3, 1:24, 1], ppp_out$false[3, 1:24, 1],
-            cppp_out$false[4, 1:24, 1], ppp_out$false[4, 1:24, 1]),
-  condition = c(rep(TRUE, 48 * 4), rep(FALSE, 48 * 4)),
-  pvalue = c(rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24), 
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24),
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24), 
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24))
+  rho = c(rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
+          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2),
+          rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
+          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2)), 
+  ratio = c(cppp_out$true[1, , 1], ppp_out$true[1, , 1],
+            cppp_out$true[2, , 1], ppp_out$true[2, , 1],
+            cppp_out$true[3, , 1], ppp_out$true[3, , 1],
+            cppp_out$true[4, , 1], ppp_out$true[4, , 1],
+            cppp_out$false[1, , 1], ppp_out$false[1, , 1],
+            cppp_out$false[2, , 1], ppp_out$false[2, , 1],
+            cppp_out$false[3, , 1], ppp_out$false[3, , 1],
+            cppp_out$false[4, , 1], ppp_out$false[4, , 1]),
+  condition = c(rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8),
+                rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8)),
+  pvalue = c(rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets),
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets))
 )
 
 data_tukey <- data.frame(
-  rho = c(rep(rho[1], 48), rep(rho[2], 48), rep(rho[3], 48), rep(rho[4], 48),
-          rep(rho[1], 48), rep(rho[2], 48), rep(rho[3], 48), rep(rho[4], 48)), 
-  tukey = c(cppp_out$true[1, 1:24, 2], ppp_out$true[1, 1:24, 2],
-            cppp_out$true[2, 1:24, 2], ppp_out$true[2, 1:24, 2],
-            cppp_out$true[3, 1:24, 2], ppp_out$true[3, 1:24, 2],
-            cppp_out$true[4, 1:24, 2], ppp_out$true[4, 1:24, 2],
-            cppp_out$false[1, 1:24, 2], ppp_out$false[1, 1:24, 2],
-            cppp_out$false[2, 1:24, 2], ppp_out$false[2, 1:24, 2],
-            cppp_out$false[3, 1:24, 2], ppp_out$false[3, 1:24, 2],
-            cppp_out$false[4, 1:24, 2], ppp_out$false[4, 1:24, 2]),
-  condition = c(rep(TRUE, 48 * 4), rep(FALSE, 48 * 4)),
-  pvalue = c(rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24), 
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24),
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24), 
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24))
+  rho = c(rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
+          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2),
+          rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
+          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2)),  
+  tukey = c(cppp_out$true[1, , 3], ppp_out$true[1, , 3],
+            cppp_out$true[2, , 3], ppp_out$true[2, , 3],
+            cppp_out$true[3, , 3], ppp_out$true[3, , 3],
+            cppp_out$true[4, , 3], ppp_out$true[4, , 3],
+            cppp_out$false[1, , 3], ppp_out$false[1, , 3],
+            cppp_out$false[2, , 3], ppp_out$false[2, , 3],
+            cppp_out$false[3, , 3], ppp_out$false[3, , 3],
+            cppp_out$false[4, , 3], ppp_out$false[4, , 3]),
+  condition = c(rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8),
+                rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8)),
+  pvalue = c(rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets),
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets))
 )
 
 data_deviance <- data.frame(
-  rho = c(rep(rho[1], 48), rep(rho[2], 48), rep(rho[3], 48), rep(rho[4], 48),
-          rep(rho[1], 48), rep(rho[2], 48), rep(rho[3], 48), rep(rho[4], 48)), 
-  deviance = c(cppp_out$true[1, 1:24, 3], ppp_out$true[1, 1:24, 3],
-               cppp_out$true[2, 1:24, 3], ppp_out$true[2, 1:24, 3],
-               cppp_out$true[3, 1:24, 3], ppp_out$true[3, 1:24, 3],
-               cppp_out$true[4, 1:24, 3], ppp_out$true[4, 1:24, 3],
-               cppp_out$false[1, 1:24, 3], ppp_out$false[1, 1:24, 3],
-               cppp_out$false[2, 1:24, 3], ppp_out$false[2, 1:24, 3],
-               cppp_out$false[3, 1:24, 3], ppp_out$false[3, 1:24, 3],
-               cppp_out$false[4, 1:24, 3], ppp_out$false[4, 1:24, 3]),
-  condition = c(rep(TRUE, 48 * 4), rep(FALSE, 48 * 4)),
-  pvalue = c(rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24), 
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24),
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24), 
-             rep("cppp", 24), rep("ppp", 24), rep("cppp", 24), rep("ppp", 24))
+  rho = c(rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
+          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2),
+          rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
+          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2)),   
+  deviance = c(cppp_out$true[1, , 3], ppp_out$true[1, , 3],
+               cppp_out$true[2, , 3], ppp_out$true[2, , 3],
+               cppp_out$true[3, , 3], ppp_out$true[3, , 3],
+               cppp_out$true[4, , 3], ppp_out$true[4, , 3],
+               cppp_out$false[1, , 3], ppp_out$false[1, , 3],
+               cppp_out$false[2, , 3], ppp_out$false[2, , 3],
+               cppp_out$false[3, , 3], ppp_out$false[3, , 3],
+               cppp_out$false[4, , 3], ppp_out$false[4, , 3]),
+  condition = c(rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8),
+                rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8)),
+  pvalue = c(rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets),
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets), 
+             rep("cppp", nDatasets), rep("ppp", nDatasets))
 )
 
 plot_true_ratio <- ggplot(data = data_ratio[data_ratio$condition == TRUE, ], 
