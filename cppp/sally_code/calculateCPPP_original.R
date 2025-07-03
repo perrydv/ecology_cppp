@@ -64,7 +64,7 @@ calcDiscrepancies <- nimbleFunction(
     },
     run = function(MCMCOutput = double(2)){
 
-        origDataValues  <- values(model, dataNodes)
+        origDataValues <- values(model, dataNodes)
         origParamValues <- values(model, paramNodes)
         nSamples <- dim(MCMCOutput)[1]
 

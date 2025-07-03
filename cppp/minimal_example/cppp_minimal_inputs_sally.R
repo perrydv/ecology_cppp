@@ -19,7 +19,7 @@ nVisits <- 6
 
 # parameter values
 p <- 0.3
-rho <- 0.5
+rho <- 0.01
 psi <- 0.6
 
 # MCMC 
@@ -53,6 +53,7 @@ inits <- function(y) list(psi = runif(1, 0, 1),
 
 # add initial values
 model$setInits(inits(model$y))
+model_uncompiled$setInits(inits(model_uncompiled$y))
 
 # generate samples
 MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
@@ -103,7 +104,7 @@ chisqDiscFunction <- nimbleFunction(
     nind <- length(obs_y)
 
     chi_out <- 0
-    for(i in 1:nind){ 
+    for(i in 1:nind){
       # get y_exp
       y_exp <- z[i] * p * nVisits
       stat <- (obs_y[i] - y_exp)^2/(obs_y[i] + 1e-6)
@@ -123,7 +124,7 @@ chisqList = list(nVisits = nVisits,
                   latent_occ = "z", 
                   prob_detection = "p")
 
-# test <- chisqDiscFunction(model = model_uncompiled, 
+# test <- chisqDiscFunction(model = model_uncompiled,
 #                           discrepancyFunctionsArgs = chisqList)
 
 
@@ -140,7 +141,7 @@ chisqList = list(nVisits = nVisits,
 # ## compiles the discrepancies internally if they are not. 
 
 # ctest <- compileNimble(test, project = model)
-
+# 
 # model$setInits(init_vals)
 # ctest$run()
 
@@ -193,11 +194,11 @@ ratioList = list(nVisits = nVisits,
 ### Testing discrepancy
 ################################# 
 
-# ratioTest <- ratioDiscFunction(model = model, 
+# ratioTest <- ratioDiscFunction(model = model,
 #                                discrepancyFunctionsArgs = ratioList)
 # init_vals <- inits(model$y)
 # model_uncompiled$setInits(init_vals)
-
+# 
 # ratioTest$run()
 
 
@@ -238,20 +239,23 @@ simNodes <- unique(c(model$expandNodeNames(dataNames),
   model$getDependencies(paramNames, includeData = FALSE, self=FALSE)))
 
 
-discrepancyFunctions <- list(chisqDiscFunction, 
-                             ratioDiscFunction)
-discrepancyFunctionsArgs <- list(chisqList, 
+discrepancyFunctions <- list(#chisqDiscFunction, 
+                             ratioDiscFunction,
+                             tukeyDiscFunction, 
+                             devianceDiscFunction)
+discrepancyFunctionsArgs <- list(#chisqList, 
+                                 ratioList,chisqList, 
                                  ratioList)
 
 
 # run calibration
 if (condition_on_latent_states) {
-  origMCMCSamples <- MCMCOutput[1:5, ]
+  origMCMCSamples <- MCMCOutput
   } else {
 
   ## paramNames are matched the column of the MCMc samples matrix
   ## SP: I added an internal line of code that makes sure of this
-  origMCMCSamples <- MCMCOutput[1:5, c("p", "psi") ]
+  origMCMCSamples <- MCMCOutput[, c("p", "psi") ]
 }
 
 mcmcConfFun <- NULL
@@ -281,3 +285,9 @@ out_cal <- runCalibration(model = model_uncompiled,
                           calcDisc,
                           parallel, 
                           nCores)
+
+ppp <- out_cal$obsPPP
+cppp <- rep(NA, length(out_cal$obsPPP))
+for (i in 1:length(cppp)) {
+  cppp[i] <- mean(out_cal$repPPP[i, ] <= ppp[i])
+}
