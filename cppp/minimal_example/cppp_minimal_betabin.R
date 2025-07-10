@@ -18,7 +18,7 @@ source("cppp/minimal_example/cppp_discrepancy_functions.R")
 # data size
 nSites <- 50
 nVisits <- 6
-nDatasets <- 50
+nDatasets <-100
 
 # parameter values
 p <- 0.3
@@ -31,14 +31,6 @@ nburnin <- 1000
 thin <- 5
 nCalibrationReplicates <- 100
 
-# discrepancy function list
-discrepancyFunctions <- list(ratioDiscFunction, tukeyDiscFunction, 
-                             devianceDiscFunction)
-
-# discrepancy function arguments
-args <- list(nVisits = nVisits, dataNames = "y",
-             latent_occ = "z", prob_detection = "p")
-discrepancyFunctionsArgs <- list(args, args, args)
 
 ############
 # get cppp #
@@ -47,14 +39,8 @@ discrepancyFunctionsArgs <- list(args, args, args)
 # create empty list of dataframes to store ppp and cppp
 ppp_out <- list()
 cppp_out <- list()
-for (i in 1:2) {
-  ppp_out[[i]] <- array(NA, dim = c(length(rho), nDatasets, 
-                                    length(discrepancyFunctions)))
-  cppp_out[[i]] <- array(NA, dim = c(length(rho), nDatasets, 
-                                     length(discrepancyFunctions)))
-}
-names(ppp_out) <- c("true", "false")
-names(cppp_out) <- c("true", "false")
+coverage <- list()
+
 
 # create model instance and compile
 constants <- list(nSites = nSites, nVisits = nVisits)
@@ -86,7 +72,29 @@ for (j in 1:length(condition_on_latent_states)) {
     simNodes <- unique(c(model$expandNodeNames(dataNames), 
                          model$getDependencies(paramNames, includeData = FALSE, 
                                                self = FALSE)))
-    paramIndices <- 1:52
+    paramIndices <- 1:(nSites + 2)
+    
+    # discrepancy function list
+    discrepancyFunctions <- list(ratioDiscFunction, devianceDiscFunction, 
+                                 chisqDiscFunction, tukeyDiscFunction)
+    
+    discrepancyNames <- c("Ratio", "Deviance", "Chi-Square", "Freeman-Tukey")
+    
+    # discrepancy function arguments
+    args <- list(nVisits = nVisits, dataNames = "y",
+                 latent_occ = "z", prob_detection = "p", prob_occupancy = "psi")
+    discrepancyFunctionsArgs <- list(args, args, args, args)
+    
+    ppp_out[[j]] <- array(NA, dim = c(length(rho), nDatasets,
+                                      length(discrepancyFunctions)),
+                          dimnames = list(rho, 1:nDatasets, discrepancyNames))
+    cppp_out[[j]] <- array(NA, dim = c(length(rho), nDatasets,
+                                       length(discrepancyFunctions)),
+                           dimnames = list(rho, 1:nDatasets, discrepancyNames))
+    coverage[[j]] <- array(NA, dim = c(length(rho), nDatasets, 2),
+                           dimnames = list(rho, 1:nDatasets, c("psi", "p")))
+    
+    
   } else {
     # if *not* conditioning on latent state
     dataNames <- c("y", "z")
@@ -95,7 +103,30 @@ for (j in 1:length(condition_on_latent_states)) {
                          model$getDependencies(paramNames, includeData = FALSE, 
                                                self = FALSE)))
     paramIndices <- 1:2
+    
+    # discrepancy function list
+    discrepancyFunctions <- list(ratioDiscFunction_NoLatent, 
+                                 devianceDiscFunction_NoLatent,
+                                 chisqDiscFunction_NoLatent,
+                                 tukeyDiscFunction_NoLatent)
+    
+    discrepancyNames <- c("Ratio", "Deviance", "Chi-Square", "Freeman-Tukey")
+    # discrepancy function arguments
+    args <- list(nVisits = nVisits, dataNames = "y",
+                 latent_occ = "z", prob_detection = "p", prob_occupancy = "psi")
+    discrepancyFunctionsArgs <- list(args, args, args,args)
+    
+    ppp_out[[j]] <- array(NA, dim = c(length(rho), nDatasets,
+                                      length(discrepancyFunctions)),
+                          dimnames = list(rho, 1:nDatasets, discrepancyNames))
+    cppp_out[[j]] <- array(NA, dim = c(length(rho), nDatasets,
+                                       length(discrepancyFunctions)),
+                           dimnames = list(rho, 1:nDatasets, discrepancyNames))
+    coverage[[j]] <- array(NA, dim = c(length(rho), nDatasets, 2),
+                           dimnames = list(rho, 1:nDatasets, c("psi", "p")))
+    
   }
+  
   
   # create compiled objects for calculating ppp and cppp
   modelCalcDisc <- calcDiscrepancies(model = model_uncompiled,
@@ -106,13 +137,15 @@ for (j in 1:length(condition_on_latent_states)) {
                                      discrepancyFunctions = discrepancyFunctions,
                                      discrepancyFunctionsArgs = discrepancyFunctionsArgs)
   
-  cModelCalcDisc <- compileNimble(modelCalcDisc, project = model_uncompiled)
+  cModelCalcDisc <- compileNimble(modelCalcDisc, project = model_uncompiled,
+                                  resetFunctions = TRUE)
   
   setAndSimPP <- setAndSimNodes(model = model_uncompiled, 
                                 nodes = paramNames, 
                                 simNodes = simNodes)
   
-  cSetAndSimPP <- compileNimble(setAndSimPP, project = model_uncompiled)
+  cSetAndSimPP <- compileNimble(setAndSimPP, project = model_uncompiled,
+                                resetFunctions = TRUE)
   
   # simulate n datasets
   for (n in 1:nDatasets) {
@@ -139,6 +172,14 @@ for (j in 1:length(condition_on_latent_states)) {
       MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
                             nburnin = nburnin, thin = thin)
       
+      
+      
+      mcmc_psi_q <- quantile(MCMCOutput[, "psi"], c(0.025, 0.975))
+      mcmc_p_q <- quantile(MCMCOutput[, "p"], c(0.025, 0.975))
+      coverage[[j]][i, n, 1] <- psi >= mcmc_psi_q[1] && psi <= mcmc_psi_q[2]
+      coverage[[j]][i, n, 2] <- p >= mcmc_p_q[1] && psi <= mcmc_p_q[2]      
+
+      
       ###############
       # cppp inputs #
       ###############
@@ -153,7 +194,8 @@ for (j in 1:length(condition_on_latent_states)) {
       
       # run calibration
       out_cal <- runCalibration_sim(
-        model = model_uncompiled, dataNames = dataNames, paramNames = paramNames, 
+        model = model_uncompiled, dataNames = dataNames, 
+        paramNames = paramNames, 
         origMCMCSamples = samples, cModelCalcDisc = cModelCalcDisc, 
         cMcmc = compiled_mcmc, cSetAndSimPP = cSetAndSimPP,
         nCalibrationReplicates = nCalibrationReplicates,
@@ -170,140 +212,110 @@ for (j in 1:length(condition_on_latent_states)) {
   }
 }
 
+data_ppp <- rbind(as.data.frame.table(ppp_out[[1]]) %>% 
+                    mutate(method = "ppp", condition = TRUE),
+                          as.data.frame.table(ppp_out[[2]]) %>% 
+                    mutate(method = "ppp", condition = FALSE)) %>% 
+  setNames(c("rho", "sim", "discrepancy", "pvalue", "method", "condition"))
+
+data_cppp <- rbind(as.data.frame.table(cppp_out[[1]]) %>% 
+                     mutate(method = "cppp", condition = TRUE),
+                  as.data.frame.table(cppp_out[[2]]) %>% 
+                    mutate(method = "cppp", condition = FALSE)) %>% 
+  setNames(c("rho", "sim", "discrepancy", "pvalue", "method", "condition"))
+
+data_coverage = rbind(as.data.frame.table(coverage[[1]]) %>% 
+                        mutate(condition = TRUE),
+      as.data.frame.table(coverage[[2]]) %>% mutate(condition = FALSE)) %>% 
+  setNames(c("rho", "sim", "par", "coverage", "condition")) %>% 
+  pivot_wider(names_from = par, values_from = coverage)
 
 
+alldata <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage)
 
-data_ratio <- data.frame(
-  rho = c(rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
-          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2),
-          rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
-          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2)), 
-  ratio = c(cppp_out$true[1, , 1], ppp_out$true[1, , 1],
-            cppp_out$true[2, , 1], ppp_out$true[2, , 1],
-            cppp_out$true[3, , 1], ppp_out$true[3, , 1],
-            cppp_out$true[4, , 1], ppp_out$true[4, , 1],
-            cppp_out$false[1, , 1], ppp_out$false[1, , 1],
-            cppp_out$false[2, , 1], ppp_out$false[2, , 1],
-            cppp_out$false[3, , 1], ppp_out$false[3, , 1],
-            cppp_out$false[4, , 1], ppp_out$false[4, , 1]),
-  condition = c(rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8),
-                rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8)),
-  pvalue = c(rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets),
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets))
-)
+density_condition <- alldata %>% 
+  filter(condition == T) %>% 
+  ggplot(aes(x = pvalue, 
+             fill = as.factor(method), group = method)) +
+  geom_density(alpha = 0.7) +
+  xlim(c(0, 1)) +
+  facet_grid(rho ~ discrepancy, scales = "free") +
+  scale_color_manual(values = c("black", NA)) +
+  scale_x_continuous(breaks = c(0, 0.5, 1),
+                     labels = c("0", "0.5", "1")) +
+  labs(x = "p-value", y = "count", fill = "") +
+  ggtitle("conditioned on latent state") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  theme_minimal(base_family = "Arial")
+ggsave("cppp/minimal_example/figures/density_true.png",
+       density_condition, dpi = 400, height = 6, width = 6)
 
-data_tukey <- data.frame(
-  rho = c(rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
-          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2),
-          rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
-          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2)),  
-  tukey = c(cppp_out$true[1, , 3], ppp_out$true[1, , 3],
-            cppp_out$true[2, , 3], ppp_out$true[2, , 3],
-            cppp_out$true[3, , 3], ppp_out$true[3, , 3],
-            cppp_out$true[4, , 3], ppp_out$true[4, , 3],
-            cppp_out$false[1, , 3], ppp_out$false[1, , 3],
-            cppp_out$false[2, , 3], ppp_out$false[2, , 3],
-            cppp_out$false[3, , 3], ppp_out$false[3, , 3],
-            cppp_out$false[4, , 3], ppp_out$false[4, , 3]),
-  condition = c(rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8),
-                rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8)),
-  pvalue = c(rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets),
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets))
-)
-
-data_deviance <- data.frame(
-  rho = c(rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
-          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2),
-          rep(rho[1], nDatasets * 2), rep(rho[2], nDatasets * 2), 
-          rep(rho[3], nDatasets * 2), rep(rho[4], nDatasets * 2)),   
-  deviance = c(cppp_out$true[1, , 3], ppp_out$true[1, , 3],
-               cppp_out$true[2, , 3], ppp_out$true[2, , 3],
-               cppp_out$true[3, , 3], ppp_out$true[3, , 3],
-               cppp_out$true[4, , 3], ppp_out$true[4, , 3],
-               cppp_out$false[1, , 3], ppp_out$false[1, , 3],
-               cppp_out$false[2, , 3], ppp_out$false[2, , 3],
-               cppp_out$false[3, , 3], ppp_out$false[3, , 3],
-               cppp_out$false[4, , 3], ppp_out$false[4, , 3]),
-  condition = c(rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8),
-                rep(TRUE, nDatasets * 8), rep(FALSE, nDatasets * 8)),
-  pvalue = c(rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets),
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets), 
-             rep("cppp", nDatasets), rep("ppp", nDatasets))
-)
-
-plot_true_ratio <- ggplot(data = data_ratio[data_ratio$condition == TRUE, ], 
-                          aes(x = as.factor(rho), y = ratio, 
-                              color = as.factor(pvalue))) +
-  geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
+density_nocondition <- alldata %>% 
+  filter(condition == F) %>% 
+  ggplot(aes(x = pvalue, 
+             fill = as.factor(method), group = method)) +
+  geom_density(alpha = 0.7) +
+  xlim(c(0, 1)) +
+  facet_grid(rho ~ discrepancy, scales = "free")+
+  scale_color_manual(values = c("black", NA))+
+  scale_x_continuous(breaks = c(0, 0.5, 1),
+                     labels = c("0", "0.5", "1")) +
+  labs(x = "p-value", y = "count", fill = "") +
+  ggtitle("not conditioned on latent state") +
   labs(x = "rho", y = "p-value", color = "") +
-  ggtitle("ratio") +
-  theme_minimal()
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  theme_minimal(base_family = "Arial")
+ggsave("cppp/minimal_example/figures/density_false.png",
+       density_nocondition, dpi = 400, height = 6, width = 6)
 
-plot_true_tukey <- ggplot(data = data_tukey[data_tukey$condition == TRUE, ], 
-                          aes(x = as.factor(rho), y = tukey, 
-                              color = as.factor(pvalue))) +
+coverpsi_condition <- alldata %>% 
+  filter(condition == T) %>% 
+  ggplot(aes(x = as.factor(rho), y = pvalue, 
+             shape = as.factor(method), color = psi, group = method)) +
   geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
-  labs(x = "rho", y = "p-value", color = "") +
-  ggtitle("freeman-tukey") +
-  theme_minimal()
+  facet_grid(discrepancy ~ .) +
+  scale_color_manual(values = c("black", NA)) +
+  labs(x = "rho", y = "p-value", color = "coverage", shape = "") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  ggtitle("psi coverage, conditioned on latent state") +
+  theme_minimal(base_family = "Arial")
+ggsave("cppp/minimal_example/figures/cover_psi_true.png",
+       coverpsi_condition, dpi = 400, height = 6, width = 6)
 
-plot_true_deviance <- ggplot(data = data_deviance[data_deviance$condition == TRUE, ], 
-                             aes(x = as.factor(rho), y = deviance, 
-                                 color = as.factor(pvalue))) +
+
+coverpsi_nocondition <- alldata %>% 
+  filter(condition == F) %>% 
+  ggplot(aes(x = as.factor(rho), y = pvalue, 
+             shape = as.factor(method), color = psi, group = method)) +
   geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
-  labs(x = "rho", y = "p-value", color = "") +
-  ggtitle("deviance") +
-  theme_minimal()
+  facet_grid(discrepancy ~ .) +
+  scale_color_manual(values = c("black", NA)) +
+  labs(x = "rho", y = "p-value", color = "coverage", shape = "") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  ggtitle("psi coverage, not conditioned on latent state") +
+  theme_minimal(base_family = "Arial")
+ggsave("cppp/minimal_example/figures/cover_psi_false.png",
+       coverpsi_nocondition, dpi = 400, height = 6, width = 6)
 
-plot_true <- plot_true_ratio + plot_true_tukey + 
-  plot_true_deviance + plot_layout(ncol = 1)
-ggsave("cppp/minimal_example/figures/betabin_true.png", plot_true, 
-       dpi = 400, height = 7, width = 4)
+alldata_long <- alldata %>% 
+  mutate(pvalue_disc = cut(pvalue, c(0, 0.05, 1), include.lowest = T)) %>% 
+  pivot_longer(c(p, psi)) %>% 
+  group_by(rho, discrepancy, method, condition, pvalue_disc, name, value) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  complete(rho, discrepancy, method, condition, pvalue_disc, name, value, 
+           fill = list(n = 0))
 
-
-plot_false_ratio <- ggplot(data = data_ratio[data_ratio$condition == FALSE, ], 
-                          aes(x = as.factor(rho), y = ratio, 
-                              color = as.factor(pvalue))) +
-  geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
-  labs(x = "rho", y = "p-value", color = "") +
-  ggtitle("ratio") +
-  theme_minimal()
-
-plot_false_tukey <- ggplot(data = data_tukey[data_tukey$condition == FALSE, ], 
-                          aes(x = as.factor(rho), y = tukey, 
-                              color = as.factor(pvalue))) +
-  geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
-  labs(x = "rho", y = "p-value", color = "") +
-  ggtitle("freeman-tukey") +
-  theme_minimal()
-
-plot_false_deviance <- ggplot(data = data_deviance[data_deviance$condition == FALSE, ], 
-                             aes(x = as.factor(rho), y = deviance, 
-                                 color = as.factor(pvalue))) +
-  geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
-  labs(x = "rho", y = "p-value", color = "") +
-  ggtitle("deviance") +
-  theme_minimal()
-
-plot_false <- plot_false_ratio + plot_false_tukey + 
-  plot_false_deviance + plot_layout(ncol = 1)
-ggsave("cppp/minimal_example/figures/betabin_false.png", plot_false, 
-       dpi = 400, height = 7, width = 4)
-
+power_plot <- alldata_long %>% 
+  filter(name == "psi") %>% 
+  ggplot()+
+  geom_bar(aes(x = rho, y = n, fill = interaction(pvalue_disc, value)), 
+           stat = "identity")+
+  facet_grid(discrepancy ~ condition + method)+
+  scale_fill_brewer(palette = "Set1",
+                    labels = c("True Positive", "False Negative", 
+                               "False Positive", "True Negative"), 
+                    name = "Power") +
+  theme_minimal(base_family = "Arial")
+ggsave("cppp/minimal_example/figures/power.png",
+       power_plot, dpi = 400, height = 6, width = 6)         
