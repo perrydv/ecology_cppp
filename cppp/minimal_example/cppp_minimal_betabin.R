@@ -177,7 +177,7 @@ for (j in 1:length(condition_on_latent_states)) {
       mcmc_psi_q <- quantile(MCMCOutput[, "psi"], c(0.025, 0.975))
       mcmc_p_q <- quantile(MCMCOutput[, "p"], c(0.025, 0.975))
       coverage[[j]][i, n, 1] <- psi >= mcmc_psi_q[1] && psi <= mcmc_psi_q[2]
-      coverage[[j]][i, n, 2] <- p >= mcmc_p_q[1] && psi <= mcmc_p_q[2]      
+      coverage[[j]][i, n, 2] <- p >= mcmc_p_q[1] && p <= mcmc_p_q[2]      
 
       
       ###############
@@ -282,7 +282,6 @@ coverpsi_condition <- alldata %>%
 ggsave("cppp/minimal_example/figures/cover_psi_true.png",
        coverpsi_condition, dpi = 400, height = 6, width = 6)
 
-
 coverpsi_nocondition <- alldata %>% 
   filter(condition == F) %>% 
   ggplot(aes(x = as.factor(rho), y = pvalue, 
@@ -297,6 +296,36 @@ coverpsi_nocondition <- alldata %>%
 ggsave("cppp/minimal_example/figures/cover_psi_false.png",
        coverpsi_nocondition, dpi = 400, height = 6, width = 6)
 
+coverp_condition <- alldata %>% 
+  filter(condition == T) %>% 
+  ggplot(aes(x = as.factor(rho), y = pvalue, 
+             shape = as.factor(method), color = p, group = method)) +
+  geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
+  facet_grid(discrepancy ~ .) +
+  scale_color_manual(values = c("black", NA)) +
+  labs(x = "rho", y = "p-value", color = "coverage", shape = "") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  ggtitle("p coverage, conditioned on latent state") +
+  theme_minimal(base_family = "Arial")
+ggsave("cppp/minimal_example/figures/cover_p_true.png",
+       coverp_condition, dpi = 400, height = 6, width = 6)
+
+
+coverp_nocondition <- alldata %>% 
+  filter(condition == F) %>% 
+  ggplot(aes(x = as.factor(rho), y = pvalue, 
+             shape = as.factor(method), color = p, group = method)) +
+  geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
+  facet_grid(discrepancy ~ .) +
+  scale_color_manual(values = c("black", NA)) +
+  labs(x = "rho", y = "p-value", color = "coverage", shape = "") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  ggtitle("p coverage, not conditioned on latent state") +
+  theme_minimal(base_family = "Arial")
+ggsave("cppp/minimal_example/figures/cover_p_false.png",
+       coverp_nocondition, dpi = 400, height = 6, width = 6)
+
+
 alldata_long <- alldata %>% 
   mutate(pvalue_disc = cut(pvalue, c(0, 0.05, 1), include.lowest = T)) %>% 
   pivot_longer(c(p, psi)) %>% 
@@ -306,16 +335,32 @@ alldata_long <- alldata %>%
   complete(rho, discrepancy, method, condition, pvalue_disc, name, value, 
            fill = list(n = 0))
 
-power_plot <- alldata_long %>% 
+power_plot_psi <- alldata_long %>% 
   filter(name == "psi") %>% 
   ggplot()+
   geom_bar(aes(x = rho, y = n, fill = interaction(pvalue_disc, value)), 
            stat = "identity")+
-  facet_grid(discrepancy ~ condition + method)+
+  facet_grid(discrepancy ~ condition + method) +
+  ggtitle("psi coverage") +
   scale_fill_brewer(palette = "Set1",
                     labels = c("True Positive", "False Negative", 
                                "False Positive", "True Negative"), 
                     name = "Power") +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/power.png",
-       power_plot, dpi = 400, height = 6, width = 6)         
+ggsave("cppp/minimal_example/figures/power_psi.png",
+       power_plot_psi, dpi = 400, height = 6, width = 7)    
+
+power_plot_p <- alldata_long %>% 
+  filter(name == "p") %>% 
+  ggplot()+
+  geom_bar(aes(x = rho, y = n, fill = interaction(pvalue_disc, value)), 
+           stat = "identity")+
+  facet_grid(discrepancy ~ condition + method) +
+  ggtitle("p coverage") +
+  scale_fill_brewer(palette = "Set1",
+                    labels = c("True Positive", "False Negative", 
+                               "False Positive", "True Negative"), 
+                    name = "Power") +
+  theme_minimal(base_family = "Arial")
+ggsave("cppp/minimal_example/figures/power_p.png",
+       power_plot_p, dpi = 400, height = 6, width = 7)   
