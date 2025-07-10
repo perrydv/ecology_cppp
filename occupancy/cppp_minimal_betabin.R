@@ -231,7 +231,8 @@ data_coverage = rbind(as.data.frame.table(coverage[[1]]) %>%
   pivot_wider(names_from = par, values_from = coverage)
 
 
-alldata <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage)
+alldata <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage) %>% 
+  mutate(all_param = ifelse(psi & p, TRUE, FALSE))
 
 density_condition <- alldata %>% 
   filter(condition == T) %>% 
@@ -247,7 +248,7 @@ density_condition <- alldata %>%
   ggtitle("conditioned on latent state") +
   geom_hline(yintercept = 0.05, linetype = 2) +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/density_true.png",
+ggsave("figures/occupancy/betabin/density_true.png",
        density_condition, dpi = 400, height = 6, width = 6)
 
 density_nocondition <- alldata %>% 
@@ -265,7 +266,7 @@ density_nocondition <- alldata %>%
   labs(x = "rho", y = "p-value", color = "") +
   geom_hline(yintercept = 0.05, linetype = 2) +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/density_false.png",
+ggsave("figures/occupancy/betabin/density_false.png",
        density_nocondition, dpi = 400, height = 6, width = 6)
 
 coverpsi_condition <- alldata %>% 
@@ -279,7 +280,7 @@ coverpsi_condition <- alldata %>%
   geom_hline(yintercept = 0.05, linetype = 2) +
   ggtitle("psi coverage, conditioned on latent state") +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/cover_psi_true.png",
+ggsave("figures/occupancy/betabin/cover_psi_true.png",
        coverpsi_condition, dpi = 400, height = 6, width = 6)
 
 coverpsi_nocondition <- alldata %>% 
@@ -293,7 +294,7 @@ coverpsi_nocondition <- alldata %>%
   geom_hline(yintercept = 0.05, linetype = 2) +
   ggtitle("psi coverage, not conditioned on latent state") +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/cover_psi_false.png",
+ggsave("figures/occupancy/betabin/cover_psi_false.png",
        coverpsi_nocondition, dpi = 400, height = 6, width = 6)
 
 coverp_condition <- alldata %>% 
@@ -307,7 +308,7 @@ coverp_condition <- alldata %>%
   geom_hline(yintercept = 0.05, linetype = 2) +
   ggtitle("p coverage, conditioned on latent state") +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/cover_p_true.png",
+ggsave("figures/occupancy/betabin/cover_p_true.png",
        coverp_condition, dpi = 400, height = 6, width = 6)
 
 
@@ -322,13 +323,41 @@ coverp_nocondition <- alldata %>%
   geom_hline(yintercept = 0.05, linetype = 2) +
   ggtitle("p coverage, not conditioned on latent state") +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/cover_p_false.png",
+ggsave("figures/occupancy/betabin/cover_p_false.png",
        coverp_nocondition, dpi = 400, height = 6, width = 6)
+
+coverall_condition <- alldata %>% 
+  filter(condition == T) %>% 
+  ggplot(aes(x = as.factor(rho), y = pvalue, 
+             shape = as.factor(method), color = all_param, group = method)) +
+  geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
+  facet_grid(discrepancy ~ .) +
+  scale_color_manual(values = c("black", NA)) +
+  labs(x = "rho", y = "p-value", color = "coverage", shape = "") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  ggtitle("all coverage, conditioned on latent state") +
+  theme_minimal(base_family = "Arial")
+ggsave("figures/occupancy/betabin/cover_all_true.png",
+       coverall_condition, dpi = 400, height = 6, width = 6)
+
+coverall_nocondition <- alldata %>% 
+  filter(condition == F) %>% 
+  ggplot(aes(x = as.factor(rho), y = pvalue, 
+             shape = as.factor(method), color = all_param, group = method)) +
+  geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
+  facet_grid(discrepancy ~ .) +
+  scale_color_manual(values = c("black", NA)) +
+  labs(x = "rho", y = "p-value", color = "coverage", shape = "") +
+  geom_hline(yintercept = 0.05, linetype = 2) +
+  ggtitle("all coverage, not conditioned on latent state") +
+  theme_minimal(base_family = "Arial")
+ggsave("figures/occupancy/betabin/cover_all_false.png",
+       coverall_nocondition, dpi = 400, height = 6, width = 6)
 
 
 alldata_long <- alldata %>% 
   mutate(pvalue_disc = cut(pvalue, c(0, 0.05, 1), include.lowest = T)) %>% 
-  pivot_longer(c(p, psi)) %>% 
+  pivot_longer(c(p, psi, all_param)) %>% 
   group_by(rho, discrepancy, method, condition, pvalue_disc, name, value) %>% 
   tally() %>% 
   ungroup() %>% 
@@ -347,7 +376,7 @@ power_plot_psi <- alldata_long %>%
                                "False Positive", "True Negative"), 
                     name = "Power") +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/power_psi.png",
+ggsave("figures/occupancy/betabin/power_psi.png",
        power_plot_psi, dpi = 400, height = 6, width = 7)    
 
 power_plot_p <- alldata_long %>% 
@@ -362,5 +391,21 @@ power_plot_p <- alldata_long %>%
                                "False Positive", "True Negative"), 
                     name = "Power") +
   theme_minimal(base_family = "Arial")
-ggsave("cppp/minimal_example/figures/power_p.png",
+ggsave("figures/occupancy/betabin/power_p.png",
        power_plot_p, dpi = 400, height = 6, width = 7)   
+
+
+power_plot_all <- alldata_long %>% 
+  filter(name == "all_param") %>% 
+  ggplot()+
+  geom_bar(aes(x = rho, y = n, fill = interaction(pvalue_disc, value)), 
+           stat = "identity")+
+  facet_grid(discrepancy ~ condition + method) +
+  ggtitle("all coverage") +
+  scale_fill_brewer(palette = "Set1",
+                    labels = c("True Positive", "False Negative", 
+                               "False Positive", "True Negative"), 
+                    name = "Power") +
+  theme_minimal(base_family = "Arial")
+ggsave("figures/occupancy/betabin/power_all.png",
+       power_plot_all, dpi = 400, height = 6, width = 7)   
