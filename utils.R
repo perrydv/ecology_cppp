@@ -1,209 +1,286 @@
-# function for calculating p values
+#########################################
+# function for running cppp simulations #
+#########################################
 
-calc_pvalues <- function(n_measures, samples) {
+run_cppp_simulations <- function(
+    constants, # model constants (list)
+    simulated_data, # simulated data (array dimensions: nDatasets, length(breakage_axis), nSites)
+    model_uncompiled,
+    MCMC_monitors, # params to monitor in MCMC
+    breakage_axis, # vector
+    data_name_list, # conditioned vs. not conditioned
+    param_name_list, # conditioned vs. not conditioned
+    param_indices_list, # conditioned vs. not conditioned
+    discrepancyFunctions,
+    discrepancyNames,
+    discrepancyFunctionsArgs,
+    coverage_params, # named list with true param values
+    init_function, # function to gerenate initial values
+    nDatasets,
+    niter,
+    nburnin,
+    thin,
+    nCalibrationReplicates
+  ) {
   
-  # create empty vector 
-  vec <- rep(NA, n_measures)
+  # create empty list of dataframes to store ppp and cppp
+  ppp_out <- list()
+  cppp_out <- list()
+  coverage <- list()
   
-  # calculate p values - conditioned on latent state
-  vec[1] <- mean(samples[, "D_rep_total"] > samples[, "D_obs_total"])
-  vec[2] <- mean(samples[, "chi_rep_total"] > samples[, "chi_obs_total"])
-  vec[3] <- mean(samples[, "ratio_rep_total"] > samples[, "ratio_obs_total"])
-  vec[4] <- mean(samples[, "tukey_rep_total"] > samples[, "tukey_obs_total"])
+  # compile model
+  model <- compileNimble(model_uncompiled)
   
-  # calculate p values - not conditioned on latent state
-  vec[5] <- mean(samples[, "D_rep_latent_total"] > samples[, "D_obs_total"])
-  vec[6] <- mean(samples[, "chi_rep_latent_total"] > samples[, "chi_obs_total"])
-  vec[7] <- mean(
-    samples[, "ratio_rep_latent_total"] > samples[, "ratio_obs_total"]
-  )
-  vec[8] <- mean(
-    samples[, "tukey_rep_latent_total"] > samples[, "tukey_obs_total"]
-  )
-  vec[9] <- mean(
-    samples[, "chi_z_rep_total"] > samples[, "chi_z_obs_total"]
-  )
+  # configure MCMC
+  mcmc_conf <- configureMCMC(model_uncompiled, monitors = MCMC_monitors)
   
-  vec[10] <- mean(
-    samples[, "tukey_z_rep_total"] > samples[, "tukey_z_obs_total"]
-  )
+  # build MCMC
+  mcmc <- buildMCMC(mcmc_conf)
   
-  return(vec)
-}
-
-
-# function for getting coverage
-get_coverage <- function(true_p, true_psi, samples_p_fname, 
-                         samples_psi_fname, axis) {
+  # compile mcmc
+  compiled_mcmc <- compileNimble(mcmc, project = model, resetFunctions = TRUE)
   
-  # read in samples
-  samples_psi <- readRDS(samples_psi_fname)
-  samples_p <- readRDS(samples_p_fname)
+  condition_on_latent_states <- c(TRUE, FALSE)
   
-  # create empty df to store coverage
-  coverage <- matrix(NA, nrow = nrow(samples_psi), ncol = 3)
-  colnames(coverage) <- c("coverage_p", "coverage_psi", axis)
-  
-  # get coverage
-  for (i in 1:nrow(samples_psi)) {
+  # calculate for conditioning vs. not conditioning on latent state
+  for (j in 1:length(condition_on_latent_states)) {
     
-    # calculate credible interval
-    ci_p <- hdi(samples_p[i, 3:ncol(samples_p)])[2:3]
-    ci_psi <- hdi(samples_psi[i, 3:ncol(samples_psi)])[2:3]
-    
-    # get p coverage
-    if (length(true_p) == 1) {
-      coverage[i, "coverage_p"] <- true_p >= ci_p$CI_low && 
-        true_p <= ci_p$CI_high 
-    } else if (length(true_p) == 2) {
-      p <- true_p[1] * (1 - samples_p[i, "pMix"]) + 
-        true_p[2] * samples_p[i, "pMix"]
-      coverage[i, "coverage_p"] <- p >= ci_p$CI_low && p <= ci_p$CI_high 
+    if (condition_on_latent_states[j]) {
+      # if conditioning on latent state
+      dataNames <- data_name_list[[j]]
+      paramNames <- param_name_list[[j]]
+      paramIndices <- param_indices_list[[j]]
+      simNodes <- unique(c(model$expandNodeNames(dataNames), 
+                           model$getDependencies(paramNames, includeData = FALSE, 
+                                                 self = FALSE)))
+      
+      # create empty arrays
+      ppp_out[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets,
+                                        length(discrepancyFunctions)),
+                            dimnames = list(breakage_axis, 1:nDatasets, 
+                                            discrepancyNames))
+      cppp_out[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets,
+                                         length(discrepancyFunctions)),
+                             dimnames = list(breakage_axis, 1:nDatasets, 
+                                             discrepancyNames))
+      coverage[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 2),
+                             dimnames = list(breakage_axis, 1:nDatasets, 
+                                             names(coverage_params)))
+      
+      
     } else {
-      p <- true_p[which(unique(samples_p[,"beta_p"]) == samples_p[i, "beta_p"])] 
-      coverage[i, "coverage_p"] <- p >= ci_p$CI_low && p <= ci_p$CI_high 
+      # if *not* conditioning on latent state
+      dataNames <- data_name_list[[j]]
+      paramNames <- param_name_list[[j]]
+      paramIndices <- param_indices_list[[j]]
+      simNodes <- unique(c(model$expandNodeNames(dataNames), 
+                           model$getDependencies(paramNames, includeData = FALSE, 
+                                                 self = FALSE)))
+      
+      # create empty arrays
+      ppp_out[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets,
+                                        length(discrepancyFunctions)),
+                            dimnames = list(breakage_axis, 1:nDatasets, 
+                                            discrepancyNames))
+      cppp_out[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets,
+                                         length(discrepancyFunctions)),
+                             dimnames = list(breakage_axis, 1:nDatasets, 
+                                             discrepancyNames))
+      coverage[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 
+                                         length(coverage_params)),
+                             dimnames = list(breakage_axis, 1:nDatasets, 
+                                             names(coverage_params)))
+      
     }
     
-    # get psi coverage
-    if (length(true_psi) == 1) {
-      coverage[i, "coverage_psi"] <- true_psi >= ci_psi$CI_low && 
-        true_psi <= ci_psi$CI_high
-    } else if (length(true_psi) == 2) {
-      psi <- true_psi[1] * (1 - samples_psi[i, "pMix"]) + 
-        true_psi[2] * samples_psi[i, "pMix"]
-      coverage[i, "coverage_psi"] <- psi >= ci_psi$CI_low && 
-        psi <= ci_psi$CI_high 
-    } else {
-      psi <- true_psi[
-        which(unique(samples_psi[,"beta_o"]) == samples_psi[i, "beta_o"])] 
-      coverage[i, "coverage_psi"] <- psi >= ci_psi$CI_low && 
-        psi <= ci_psi$CI_high 
+    
+    # create compiled objects for calculating ppp and cppp
+    modelCalcDisc <- calcDiscrepancies(model = model_uncompiled,
+                                       dataNames = dataNames,
+                                       paramNames = paramNames,
+                                       paramIndices = paramIndices,
+                                       simNodes = simNodes,
+                                       discrepancyFunctions = discrepancyFunctions,
+                                       discrepancyFunctionsArgs = discrepancyFunctionsArgs)
+    
+    cModelCalcDisc <- compileNimble(modelCalcDisc, project = model_uncompiled,
+                                    resetFunctions = TRUE)
+    
+    setAndSimPP <- setAndSimNodes(model = model_uncompiled, 
+                                  nodes = paramNames, 
+                                  simNodes = simNodes)
+    
+    cSetAndSimPP <- compileNimble(setAndSimPP, project = model_uncompiled,
+                                  resetFunctions = TRUE)
+    
+    # simulate n datasets
+    for (n in 1:nDatasets) {
+      
+      # loop through rho
+      for (i in 1:length(breakage_axis)) {
+        
+        # add simulated data **note: assumes data is named y
+        model_uncompiled$y <- simulated_data[n, i, ]
+        model$y <- simulated_data[n, i, ]
+        
+        # add inits
+        model_uncompiled$setInits(init_function(model_uncompiled$y))
+        model$setInits(init_function(model$y))
+        
+        # generate samples
+        MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
+                              nburnin = nburnin, thin = thin)
+        
+        # get coverage
+        for (p in 1:length(coverage_params)) {
+          bounds <- quantile(MCMCOutput[, names(coverage_params)[p]], 
+                             c(0.025, 0.975))
+          coverage[[j]][i, n, p] <- coverage_params[p] >= bounds[1] && 
+            coverage_params[p] <= bounds[2]
+        }     
+        
+        
+        ###############
+        # cppp inputs #
+        ###############
+        
+        if (condition_on_latent_states[j]) {
+          # if conditioning on latent state
+          samples <- MCMCOutput
+        } else {
+          # if *not* conditioning on latent state
+          samples <- MCMCOutput[, paramNames]
+        }
+        
+        # run calibration
+        out_cal <- runCalibration_sim(
+          model = model_uncompiled, dataNames = dataNames, 
+          paramNames = paramNames, 
+          origMCMCSamples = samples, cModelCalcDisc = cModelCalcDisc, 
+          cMcmc = compiled_mcmc, cSetAndSimPP = cSetAndSimPP,
+          nCalibrationReplicates = nCalibrationReplicates,
+          returnSamples = FALSE, returnDiscrepancies = FALSE) 
+        
+        # add ppp
+        ppp_out[[j]][i, n, ] <- out_cal$obsPPP
+        
+        # calculate cppp
+        for (k in 1:length(out_cal$obsPPP)) {
+          cppp_out[[j]][i, n, k] <- mean(out_cal$repPPP[k, ] <= out_cal$obsPPP[k])
+        }
+      }
     }
-    
-    # store axis
-    coverage[i, axis] <- samples_p[i, axis]
-    
   }
   
-  # get coverage summary
-  coverage_summary <- as.data.frame(coverage) %>% 
-    group_by(.data[[axis]]) %>% 
-    summarize(mean_p = mean(coverage_p),
-              mean_psi = mean(coverage_psi))
+  # convert from lists to arrays
+  data_ppp <- rbind(as.data.frame.table(ppp_out[[1]]) %>% 
+                      mutate(method = "ppp", condition = TRUE),
+                    as.data.frame.table(ppp_out[[2]]) %>% 
+                      mutate(method = "ppp", condition = FALSE)) %>% 
+    setNames(c("breakage_axis", "sim", "discrepancy", 
+               "pvalue", "method", "condition"))
   
-  return(coverage_summary)
-}
-
-# function for getting coverage - site occupancy covariates
-get_coverage_beta <- function(true_p, true_beta, samples_p_fname, 
-                              samples_beta_fname, axis) {
+  data_cppp <- rbind(as.data.frame.table(cppp_out[[1]]) %>% 
+                       mutate(method = "cppp", condition = TRUE),
+                     as.data.frame.table(cppp_out[[2]]) %>% 
+                       mutate(method = "cppp", condition = FALSE)) %>% 
+    setNames(c("breakage_axis", "sim", "discrepancy", 
+               "pvalue", "method", "condition"))
   
-  # read in samples
-  samples_beta <- readRDS(samples_beta_fname)
-  samples_p <- readRDS(samples_p_fname)
+  data_coverage <- rbind(as.data.frame.table(coverage[[1]]) %>% 
+                          mutate(condition = TRUE),
+                        as.data.frame.table(coverage[[2]]) %>% 
+                          mutate(condition = FALSE)) %>% 
+    setNames(c("breakage_axis", "sim", "par", "coverage", "condition")) %>% 
+    pivot_wider(names_from = par, values_from = coverage)
   
-  # create empty df to store coverage
-  coverage <- matrix(NA, nrow = nrow(samples_beta), ncol = 3)
-  colnames(coverage) <- c("coverage_p", "coverage_beta", axis)
+  all_data <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage)
   
-  # get coverage
-  for (i in 1:nrow(samples_beta)) {
-    
-    # calculate credible interval
-    ci_p <- hdi(samples_p[i, 3:ncol(samples_p)])[2:3]
-    ci_beta <- hdi(samples_beta[i, 3:ncol(samples_beta)])[2:3]
-    
-    # get p coverage
-    coverage[i, "coverage_p"] <- true_p >= ci_p$CI_low && 
-      true_p <= ci_p$CI_high 
-    
-    # get beta coverage
-    coverage[i, "coverage_beta"] <- true_beta >= ci_beta$CI_low && 
-      true_beta <= ci_beta$CI_high
-    
-    # store axis
-    coverage[i, axis] <- samples_p[i, axis]
-    
-  }
-  
-  # get coverage summary
-  coverage_summary <- as.data.frame(coverage) %>% 
-    group_by(.data[[axis]]) %>% 
-    summarize(mean_p = mean(coverage_p),
-              mean_beta = mean(coverage_beta))
-  
-  return(coverage_summary)
+  return(all_data)
 }
 
 
-# function to prepare figure data
-prep_fig_data <- function(pvalue_fname, axis_name, axis_values, 
-                          null_df_notcond, null_df_cond) {
+##############
+# cppp plots #
+##############
+
+# density plot
+get_cppp_density_plot <- function(all_data, cdtn) {
   
-  # alt hypothesis
-  pvalues <- as.data.frame(readRDS(pvalue_fname))
-  colnames(pvalues) <- c(axis_name, "deviance_yes", "chisq_yes", "likratio_yes",
-                         "ftukey_yes", "deviance_no", "chisq_no",
-                         "likratio_no", "ftukey_no")
-  pvalues_long <- pvalues %>% 
-    pivot_longer(cols = -axis_name, 
-                 names_to = c("measure", "latent_cond"),
-                 values_to = "pvalue",
-                 names_sep = "_") %>% 
-    mutate(hyp = "alt")
+  title <- ifelse(cdtn, "conditioned on latent state",
+                  "not conditioned on latent state")
   
-  # join null and alternative together
-  pvalues_all_notcond <- rbind(
-    pvalues_long[pvalues_long$latent_cond == "no",
-                 c(axis_name, "measure", "pvalue", "hyp")],
-    null_df_notcond %>% mutate(!!axis_name := axis_values[1]),
-    null_df_notcond %>% mutate(!!axis_name := axis_values[2]),
-    null_df_notcond %>% mutate(!!axis_name := axis_values[3])
-  )
-  pvalues_all_cond <- rbind(
-    pvalues_long[pvalues_long$latent_cond == "yes",
-                 c(axis_name, "measure", "pvalue", "hyp")],
-    null_df_cond %>% mutate(!!axis_name := axis_values[1]),
-    null_df_cond %>% mutate(!!axis_name := axis_values[2]),
-    null_df_cond %>% mutate(!!axis_name := axis_values[3])
-  )
+  plot <- all_data %>% 
+    filter(condition == cdtn) %>% 
+    ggplot(aes(x = pvalue, 
+               fill = as.factor(method), group = method)) +
+    geom_density(alpha = 0.7) +
+    xlim(c(0, 1)) +
+    facet_grid(breakage_axis ~ discrepancy, scales = "free") +
+    scale_color_manual(values = c("black", NA)) +
+    scale_x_continuous(breaks = c(0, 0.5, 1),
+                       labels = c("0", "0.5", "1")) +
+    labs(x = "p-value", y = "count", fill = "") +
+    ggtitle(title) +
+    geom_hline(yintercept = 0.05, linetype = 2) +
+    theme_minimal(base_family = "Arial")
   
-  return(list(pvalues_all_notcond, pvalues_all_cond))
+  return(plot)
 }
 
+# dot plot
+get_cppp_dot_plot <- function(all_data, param, breakage_axis_name, cdtn) {
+  
+  title <- ifelse(cdtn, paste0(param, " coverage, conditioned on latent state"),
+                  paste0(param, " coverage, conditioned on latent state"))
+  
+  plot <- all_data %>% 
+    filter(condition == cdtn) %>% 
+    ggplot(aes(x = as.factor(breakage_axis), y = pvalue, 
+               shape = as.factor(method), color = !!sym(param), 
+               group = method)) +
+    geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
+    facet_grid(discrepancy ~ .) +
+    scale_color_manual(values = c("black", NA)) +
+    labs(x = breakage_axis_name, y = "p-value", 
+         color = "coverage", shape = "") +
+    geom_hline(yintercept = 0.05, linetype = 2) +
+    ggtitle(title) +
+    theme_minimal(base_family = "Arial")
+  
+  return(plot)
+}
 
-# function for creating null/alt p value plots
-get_ppp_plots <- function(pvalue_fig_data, title, axis, labels) {
+# power plot
+get_cppp_power_plot <- function(all_data, param, breakage_axis_name) {
   
-  # build the facet formula dynamically
-  facet_formula <- as.formula(paste("measure ~", axis))
+  # convert data to long
+  all_data_long <- all_data %>% 
+    mutate(pvalue_disc = cut(pvalue, c(0, 0.05, 1), 
+                             include.lowest = T)) %>% 
+    pivot_longer(c(p, psi, all_param)) %>% 
+    group_by(breakage_axis, discrepancy, method, 
+             condition, pvalue_disc, name, value) %>% 
+    tally() %>% 
+    ungroup() %>% 
+    complete(breakage_axis, discrepancy, method, 
+             condition, pvalue_disc, name, value, 
+             fill = list(n = 0))
   
-  # create plots
-  plot_notcond <- ggplot(pvalue_fig_data[[1]], 
-                         aes(x = pvalue, fill = hyp)) +
-    geom_histogram(position = "identity", alpha = 0.5) +
-    scale_x_continuous(limits = c(-0.05, 1), 
-                       breaks = c(0, 0.25, 0.5, 0.75, 1),
-                       labels = c("0", "0.25", "0.5", "0.75", "1")) +
-    facet_grid(facet_formula, labeller = labeller(
-      measure = discrepancy_labels,
-      .cols = labels)) +
-    labs(x = "ppp", y = "count", fill = "hypothesis") +
-    ggtitle(paste0(title, ", ppp not conditioned on latent state")) +
-    theme_minimal()
+  plot <- all_data_long %>% 
+    filter(name == param) %>% 
+    ggplot()+
+    geom_bar(aes(x = breakage_axis, y = n, 
+                 fill = interaction(pvalue_disc, value)), 
+             stat = "identity")+
+    facet_grid(discrepancy ~ condition + method) +
+    labs(x = breakage_axis_name) +
+    ggtitle(paste(param, " coverage")) +
+    scale_fill_brewer(palette = "Set1",
+                      labels = c("True Positive", "False Negative", 
+                                 "False Positive", "True Negative"), 
+                      name = "Power") +
+    theme_minimal(base_family = "Arial")
   
-  plot_cond <- ggplot(pvalue_fig_data[[2]], 
-                      aes(x = pvalue, fill = hyp)) +
-    geom_histogram(position = "identity", alpha = 0.5) +
-    scale_x_continuous(limits = c(-0.05, 1),
-                       breaks = c(0, 0.25, 0.5, 0.75, 1),
-                       labels = c("0", "0.25", "0.5", "0.75", "1")) +
-    facet_grid(facet_formula, labeller = labeller(
-      measure = discrepancy_labels,
-      .cols = labels)) +
-    labs(x = "ppp", y = "count", fill = "hypothesis") +
-    ggtitle(paste0(title, ", ppp conditioned on latent state")) +
-    theme_minimal()
-  
-  return(list(plot_notcond, plot_cond))
+  return(plot)
 }

@@ -343,28 +343,3 @@ tukeyDiscFunction_z <- nimbleFunction(
     
   }
 )
-
-
-##################################
-# discrepancy function arguments #
-##################################
-
-# chisqList <- list(nVisits = nVisits, 
-#                   dataNames = "y",
-#                   latent_occ = "z", 
-#                   prob_detection = "p")
-# 
-# ratioList <- list(nVisits = nVisits, 
-#                   dataNames = "y",
-#                   latent_occ = "z", 
-#                   prob_detection = "p")
-# 
-# tukeyList <- list(nVisits = nVisits, 
-#                   dataNames = "y",
-#                   latent_occ = "z", 
-#                   prob_detection = "p")
-# 
-# devList <- list(nVisits = nVisits, 
-#                 dataNames = "y",
-#                 latent_occ = "z", 
-#                 prob_detection = "p")
