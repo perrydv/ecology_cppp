@@ -1,32 +1,36 @@
 Berkeley ESPM QuantEco lab group's study on calibrated posterior predictive p-values in ecology.
 
-`simulate_data.R`: functions for simulating data under different model variations
-
-`occupancy_model.R`: nimble models and functions for calculating discrepancy measures and running models
-
-`main_null.R`: run MCMC and calculate p values for model variations under the *null* hypothesis that the model generated the data.
-
-`main_alt.R`: run MCMC and calculate p values for model variations under the *alternative* hypothesis that the model did not generate the data.
-
 [Link to meeting notes](https://docs.google.com/document/d/1ZPJUCIgU28_Fm_4gV6fgKoFihSasZjHoTyGMsj6vVMU/edit?tab=t.0#heading=h.v38mx9tc4ayu)
 
-I followed an example in another repository and wrapped the directory structure within a pair of triple backticks (```):
+## File structure
 
 ```
 ecology_cppp
-│   README.md # readme
-│   file001.txt    
+│   README.md
+│   utils.R # general auxiliary functions relevant for all model types    
 │
-└───folder1
-│   │   file011.txt
-│   │   file012.txt
+└───cppp
 │   │
-│   └───subfolder1
-│       │   file111.txt
-│       │   file112.txt
-│       │   ...
+│   └─────newcomb_example # Sally's toy example
+│   │     │   model.R
+│   │     │   light.txt
+│   │
+│   └─────sally_code # code from Paganin et al.
+│         │   1_runCPPP.R
+│         │   calculateCPPP_original.R
+│         │   registeredDiscrepancies.R
 │   
-└───folder2
-    │   file021.txt
-    │   file022.txt
+└───figures
+│   │
+│   └─────occupancy # occupancy figures
+│
+└───occupancy
+│   │
+│   │  calculate_CPPP.R # runs simulations to calculate cppp, ppp, coverage; generates plots
+│   │  minimal_model.R # occupancy model specifications
+│   │  occupancy_discrepancy_functions.R # occupancy model-specific discrepancy functions
+│   │  occupancy_model.R # occupancy model specifications that calculate posterior predictive samples in model code (let's phase this out)
+│   │  simulate_data.R # simulates detection/non-detection data for different occu model specifications
+
 ```
+
