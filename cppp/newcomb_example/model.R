@@ -10,13 +10,15 @@ data <- list(y = read.table("cppp/newcomb_example/light.txt")$V1)
 ## Newcomb - speed of light data 
 ##------------------------------------##
 modelCode <- nimbleCode({
-	for(i in 1:n){
-		y[i] ~ dnorm(mu, sd = sigma)
-	}
+  
+  for (i in 1:n) {
+    y[i] ~ dnorm(mu, sd = sigma)
+  }
 
-	## noninformative priors
-	mu ~ dflat()
-	log(sigma) ~ dflat()
+  ## noninformative priors
+  mu ~ dflat()
+  log(sigma) ~ dflat()
+
 })
 
 ##------------------------------------##
@@ -25,19 +27,17 @@ constants <- list(n = length(data$y))
 
 ## model
 
-model <- nimbleModel(code 		= modelCode, 
-					 data 		= data, 
-					 inits 		= inits, 
-					 constants 	= constants)
+model <- nimbleModel(code = modelCode, data = data, inits = inits, 
+                     constants = constants)
 
-cModel 	<- compileNimble(model)
-mcmc    <- buildMCMC(model, monitors = c("mu", "log_sigma"))
-cMcmc   <- compileNimble(mcmc, project = model)
+cModel <- compileNimble(model)
+mcmc <- buildMCMC(model, monitors = c("mu", "log_sigma"))
+cMcmc <- compileNimble(mcmc, project = model)
 
 samples <- runMCMC(cMcmc, niter = 5000, nburnin = 1000)
 
 ## save and re-read
-##	saveRDS(samples, file = paste0(dirExample, "/MCMCSamples.rds"))
+## saveRDS(samples, file = paste0(dirExample, "/MCMCSamples.rds"))
 ## origMCMCSamples <- readRDS(paste0(dirExample, "/MCMCSamples.rds"))
 
 
@@ -58,10 +58,10 @@ discrepancyFunction_BASE <- nimbleFunctionVirtual(
 ## 1. minimum observation
 minObservation <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
-    dataNames <- discrepancyFunctionsArgs[['dataNames']]
+  setup = function(model, discrepancyFunctionsArgs) {
+    dataNames <- discrepancyFunctionsArgs[["dataNames"]]
   },
-  run = function(){
+  run = function() {
     dataVals <- values(model, dataNames)
     stat <- min(dataVals)
     returnType(double(0))  # must return a double(0)
@@ -70,8 +70,9 @@ minObservation <- nimbleFunction(
 )
 
 
-# test <- minObservation(model = model, 
-#                        discrepancyFunctionsArgs = list(dataNames = names(data)))
+# test <- minObservation(model = model,
+#                        discrepancyFunctionsArgs = 
+#                          list(dataNames = names(data)))
 
 # test$run()
 # ctest <- compileNimble(test, project = model)
@@ -79,25 +80,26 @@ minObservation <- nimbleFunction(
 ##############
 
 ## make a function to call R sort function in nimble
-sortR <- nimbleRcall(prototype 	= function(x = double(1)){}, 
-					 Rfun 		= "sort", 
-					 returnType = double(1))
+sortR <- nimbleRcall(prototype 	= function(x = double(1)) {}, 
+                     Rfun = "sort", 
+                     returnType = double(1))
 
 
 asymmetryDisc <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
-    dataNames <- discrepancyFunctionsArgs[['dataNames']]
-   	meanParam <- discrepancyFunctionsArgs[['meanParam']]
+  setup = function(model, discrepancyFunctionsArgs) {
+    dataNames <- discrepancyFunctionsArgs[["dataNames"]]
+    meanParam <- discrepancyFunctionsArgs[["meanParam"]]
   },
-  run = function(){
-    dataVals    <- values(model, dataNames)
-    meanVal     <- values(model, meanParam)[1]
-    sortedVals  <- sortR(dataVals)
-    stat 	      <- abs(sortedVals[61] - meanVal) - abs(sortedVals[6] - meanVal)
+  run = function() {
+    dataVals <- values(model, dataNames)
+    meanVal <- values(model, meanParam)[1]
+    sortedVals <- sortR(dataVals)
+    stat <- abs(sortedVals[61] - meanVal) - abs(sortedVals[6] - meanVal)
     returnType(double(0))  # must return a double(0)
     return(stat)
-})
+  }
+)
 
 
 # test2 <- asymmetryDisc(model = model, 
@@ -112,25 +114,25 @@ asymmetryDisc <- nimbleFunction(
 ##################
 ## Set values to run CPPP
 origMCMCSamples <- samples
-paramNames    <- colnames(origMCMCSamples)
-dataNames     <- names(data)
-mcmcConfFun   <- NULL
+paramNames <- colnames(origMCMCSamples)
+dataNames <- names(data)
+mcmcConfFun <- NULL
 
 
 ## discrepancy functions
 discrepancyFunctions <- list(minObservation, asymmetryDisc)
 discrepancyFunctionsArgs <- list(list(dataNames = names(data)), 
-                 list(dataNames = names(data), 
-                    meanParam = "mu"))
+                                 list(dataNames = names(data), 
+                                      meanParam = "mu"))
 
 
 nCalibrationReplicates <- 10
 nIterMCMC <- 2
 
 ## Settings for MCMC
-MCMCcontrol <- list(niter   = nIterMCMC,
+MCMCcontrol <- list(niter = nIterMCMC,
                     nburnin = 0, 
-                    thin  = 1)
+                    thin = 1)
 
 ## Flags
 returnSamples <- TRUE                            
@@ -144,23 +146,16 @@ nCores <- 1
 ## run calibration
 time <- system.time(
   out <- runCalibration(## this comes from model.R file
-                      model = model,
-                      dataNames = dataNames,
-                      paramNames = paramNames,
-                      origMCMCSamples = origMCMCSamples,         
-                      mcmcConfFun = mcmcConfFun,
-                      discrepancyFunctions = discrepancyFunctions, 
-                      discrepancyFunctionsArgs = discrepancyFunctionsArgs,
-                      ## this comes from args or defaults
-                      nCalibrationReplicates = nCalibrationReplicates,
-                      MCMCcontrol = MCMCcontrol,                  
-                      returnSamples = returnSamples,
-                      returnDiscrepancies = returnDiscrepancies,
-                      calcDisc = calcDisc, 
-                      parallel = parallel, 
-                      nCores   = nCores) 
+    model = model, dataNames = dataNames, paramNames = paramNames,
+    origMCMCSamples = origMCMCSamples, mcmcConfFun = mcmcConfFun,
+    discrepancyFunctions = discrepancyFunctions, 
+    discrepancyFunctionsArgs = discrepancyFunctionsArgs,
+    ## this comes from args or defaults
+    nCalibrationReplicates = nCalibrationReplicates,
+    MCMCcontrol = MCMCcontrol, returnSamples = returnSamples,
+    returnDiscrepancies = returnDiscrepancies, calcDisc = calcDisc,
+    parallel = parallel, nCores = nCores
+  ) 
 )
 out$time <- time
 ## save results
-
-

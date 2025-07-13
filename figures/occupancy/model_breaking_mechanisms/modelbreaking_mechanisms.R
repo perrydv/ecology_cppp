@@ -7,12 +7,16 @@ x2 <- rnorm(100)
 beta0 <- 0
 beta1 <- 0.5
 beta2 <- c(1, 3, 5)
-psi_null <- data.frame(psi = plogis(beta0 + beta1 * x1)) %>% mutate(hyp = "null")
-psi_alt1 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + beta2[1] * x1 * x2)) %>% 
-  mutate(hyp = "alt"), psi_null)
-psi_alt2 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + beta2[2] * x1 * x2)) %>% 
+psi_null <- data.frame(psi = plogis(beta0 + beta1 * x1)) %>% 
+  mutate(hyp = "null")
+psi_alt1 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
+                                            beta2[1] * x1 * x2)) %>% 
                     mutate(hyp = "alt"), psi_null)
-psi_alt3 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + beta2[3] * x1 * x2)) %>% 
+psi_alt2 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
+                                            beta2[2] * x1 * x2)) %>% 
+                    mutate(hyp = "alt"), psi_null)
+psi_alt3 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
+                                            beta2[3] * x1 * x2)) %>% 
                     mutate(hyp = "alt"), psi_null)
 
 plot_1 <- ggplot() +
@@ -164,11 +168,11 @@ nVisits <- 50
 
 p_vec1 <- p_vec3 <- p_vec5 <- rep(p, nSites)
 
-p_vec1[sample(1:nSites, nOutliers, replace = F)] <- 1 / 
+p_vec1[sample(1:nSites, nOutliers, replace = FALSE)] <- 1 / 
   (1 + exp(-(log(p / (1 - p)) + beta_p[1])))
-p_vec3[sample(1:nSites, nOutliers, replace = F)] <- 1 / 
+p_vec3[sample(1:nSites, nOutliers, replace = FALSE)] <- 1 / 
   (1 + exp(-(log(p / (1 - p)) + beta_p[2])))
-p_vec5[sample(1:nSites, nOutliers, replace = F)] <- 1 / 
+p_vec5[sample(1:nSites, nOutliers, replace = FALSE)] <- 1 / 
   (1 + exp(-(log(p / (1 - p)) + beta_p[3])))
 
 plot_pOut1 <- ggplot() +
@@ -216,8 +220,8 @@ nRegions <- nSites / 5
 nVisits <- 50
 
 psivec0.01 <- rbinom(nSites, 1, 
-                    p = rep(c(psi1, psi2)[rbinom(nRegions, 1, pMix[1]) + 1],
-                            each = nSites / nRegions))
+                     p = rep(c(psi1, psi2)[rbinom(nRegions, 1, pMix[1]) + 1],
+                             each = nSites / nRegions))
 psivec0.2 <- rbinom(nSites, 1, 
                     p = rep(c(psi1, psi2)[rbinom(nRegions, 1, pMix[2]) + 1],
                             each = nSites / nRegions))
@@ -266,18 +270,18 @@ nOutliers <- 0.05 * nRegions
 nVisits <- 50
 
 psi_region_vec0.1 <- rep(psi, nRegions)
-psi_region_vec0.1[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
-    (1 + exp(-(log(psi / (1 - psi)) + beta_o[1])))
+psi_region_vec0.1[sample(1:nRegions, nOutliers, replace = FALSE)] <- 1 / 
+  (1 + exp(-(log(psi / (1 - psi)) + beta_o[1])))
 psi_vec0.1 <- rep(psi_region_vec0.1, each = nSites / nRegions)
 mean(psi_vec0.1)
 
 psi_region_vec0.5 <- rep(psi, nRegions)
-psi_region_vec0.5[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
+psi_region_vec0.5[sample(1:nRegions, nOutliers, replace = FALSE)] <- 1 / 
   (1 + exp(-(log(psi / (1 - psi)) + beta_o[2])))
 psi_vec0.5 <- rep(psi_region_vec0.5, each = nSites / nRegions)
 
 psi_region_vec1 <- rep(psi, nRegions)
-psi_region_vec1[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
+psi_region_vec1[sample(1:nRegions, nOutliers, replace = FALSE)] <- 1 / 
   (1 + exp(-(log(psi / (1 - psi)) + beta_o[3])))
 psi_vec1 <- rep(psi_region_vec1, each = nSites / nRegions)
 
@@ -304,7 +308,7 @@ plot_oOut0.5 <- ggplot() +
 
 plot_oOut1 <- ggplot() +
   geom_histogram(aes(x = rbinom(nSites, 1, psi_vec1))) +
-  geom_vline(aes(xintercept = unique(psi_vec1)[1] * (1 - nOutliers / nRegions) + 
+  geom_vline(aes(xintercept = unique(psi_vec1)[1] * (1 - nOutliers / nRegions) +
                    unique(psi_vec1)[2] * nOutliers / nRegions), 
              color = "red", linetype = "dashed") +
   labs(x = "z", y = "count") +
@@ -316,4 +320,3 @@ final_outlierocc_plot <- plot_oOut0.1 + plot_oOut0.5 + plot_oOut1 +
 ggsave("figures/model_breaking_mechanisms/modelbreak_outlier_occ.png", 
        final_outlierocc_plot, dpi = 400, 
        width = 7, height = 3)
-

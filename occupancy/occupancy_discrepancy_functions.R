@@ -10,7 +10,7 @@ discrepancyFunction_BASE <- nimbleFunctionVirtual(
 ## chi-squared discrepancy function
 chisqDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -28,7 +28,7 @@ chisqDiscFunction <- nimbleFunction(
     nsites <- length(obs_y)
     
     chi_out <- 0
-    for(i in 1:nsites){
+    for (i in 1:nsites) {
       # get y_exp
       y_exp <- z[i] * p * nVisits
       stat <- (obs_y[i] - y_exp) ^ 2 / (y_exp + 1e-6)
@@ -43,7 +43,7 @@ chisqDiscFunction <- nimbleFunction(
 ## ratio discrepancy function
 ratioDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -61,7 +61,7 @@ ratioDiscFunction <- nimbleFunction(
     
     ratio_out <- 0
     
-    for(i in 1:nsites){ 
+    for (i in 1:nsites) { 
       # get y_exp
       y_exp <- z[i] * p * nVisits
       ratio_out <- ratio_out + 
@@ -80,7 +80,7 @@ ratioDiscFunction <- nimbleFunction(
 ## tukey discrepancy function
 tukeyDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -98,7 +98,7 @@ tukeyDiscFunction <- nimbleFunction(
     
     tukey_out <- 0
     
-    for(i in 1:nsites){ 
+    for (i in 1:nsites) { 
       # get y_exp
       y_exp <- z[i] * p * nVisits
       tukey_out <- tukey_out + (sqrt(obs_y[i]) - sqrt(y_exp)) ^ 2
@@ -113,7 +113,7 @@ tukeyDiscFunction <- nimbleFunction(
 ## deviance discrepancy function
 devianceDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -131,7 +131,7 @@ devianceDiscFunction <- nimbleFunction(
     
     dev_out <- 0
     
-    for(i in 1:nsites){ 
+    for (i in 1:nsites) { 
       dev_out <- dev_out + -2 * 
         log(dbinom(obs_y[i], nVisits, z[i] * p) + 1e-6)
     }
@@ -149,7 +149,7 @@ devianceDiscFunction <- nimbleFunction(
 ## chi-squared discrepancy function
 chisqDiscFunction_NoLatent <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -168,7 +168,7 @@ chisqDiscFunction_NoLatent <- nimbleFunction(
     nsites <- length(obs_y)
     
     chi_out <- 0
-    for(i in 1:nsites){
+    for (i in 1:nsites) {
       stat <- (obs_y[i] - y_exp) ^ 2 / (y_exp + 1e-6)
       chi_out <- chi_out + stat
     }
@@ -181,7 +181,7 @@ chisqDiscFunction_NoLatent <- nimbleFunction(
 ## ratio discrepancy function
 ratioDiscFunction_NoLatent <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -201,7 +201,7 @@ ratioDiscFunction_NoLatent <- nimbleFunction(
     
     ratio_out <- 0
     
-    for(i in 1:nsites){ 
+    for (i in 1:nsites) { 
       ratio_out <- ratio_out + 
         2 * (obs_y[i] * log((obs_y[i] + 1e-6) / 
                               (y_exp + 1e-6)) + (nVisits - obs_y[i]) * 
@@ -218,7 +218,7 @@ ratioDiscFunction_NoLatent <- nimbleFunction(
 ## tukey discrepancy function
 tukeyDiscFunction_NoLatent <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -238,7 +238,7 @@ tukeyDiscFunction_NoLatent <- nimbleFunction(
     
     tukey_out <- 0
     
-    for(i in 1:nsites){ 
+    for (i in 1:nsites) { 
       tukey_out <- tukey_out + (sqrt(obs_y[i]) - sqrt(y_exp)) ^ 2
     }
     
@@ -251,7 +251,7 @@ tukeyDiscFunction_NoLatent <- nimbleFunction(
 ## deviance discrepancy function
 devianceDiscFunction_NoLatent <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -269,7 +269,7 @@ devianceDiscFunction_NoLatent <- nimbleFunction(
     
     dev_out <- 0
     
-    for(i in 1:nsites){ 
+    for (i in 1:nsites) { 
       dev_out <- dev_out + -2 * 
         log(dbinom(obs_y[i], nVisits, psi * p) + 1e-6)
     }
@@ -289,7 +289,7 @@ devianceDiscFunction_NoLatent <- nimbleFunction(
 ## chi-squared discrepancy function
 chisqDiscFunction_z <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -304,7 +304,7 @@ chisqDiscFunction_z <- nimbleFunction(
     nsites <- length(obs_z)
     
     chi_out <- 0
-    for(i in 1:nsites){
+    for (i in 1:nsites) {
       stat <- (obs_z[i] - psi) ^ 2 / (psi + 1e-6)
       chi_out <- chi_out + stat
     }
@@ -317,7 +317,7 @@ chisqDiscFunction_z <- nimbleFunction(
 ## tukey discrepancy function
 tukeyDiscFunction_z <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
+  setup = function(model, discrepancyFunctionsArgs) {
     
     dataNames <- discrepancyFunctionsArgs[["dataNames"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
@@ -334,7 +334,7 @@ tukeyDiscFunction_z <- nimbleFunction(
     
     tukey_out <- 0
     
-    for(i in 1:nsites){ 
+    for (i in 1:nsites) { 
       tukey_out <- tukey_out + (sqrt(obs_z[i]) - sqrt(psi)) ^ 2
     }
     

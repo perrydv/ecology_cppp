@@ -40,8 +40,8 @@ nCalibrationReplicates <- 100
 
 # simulate data
 simulated_data <- array(NA, dim = c(nDatasets, length(rho), nSites))
-for (n in 1:nDatasets) {
-  for (i in 1:length(rho)) {
+for (n in seq_along(1:nDatasets)) {
+  for (i in seq_along(rho)) {
     # simulate data
     simulated_data[n, i, ] <- simulate_betabinomial(
       params = list(psi = psi, p = p),
@@ -57,26 +57,27 @@ for (n in 1:nDatasets) {
 constants <- list(nSites = nSites, nVisits = nVisits)
 
 # uncompiled model - temporarily add data so that the MCMC samplers get set up
-model_uncompiled <- model_uncompiled <- nimbleModel(
-  model_minimal, constants = constants,
-  data = list(y = simulate_betabinomial(params = list(psi = psi, p = p),
-                                        nSites, nVisits, rho[1])))
+model_uncompiled <- nimbleModel(model_minimal, constants = constants,
+                                data = list(y = simulated_data[1, 1, ]))
 
 # param names to monitor in MCMC
-MCMC_monitors <- c("psi", "p", "z")
+mcmc_monitors <- c("psi", "p", "z")
 
 # axis of model breakage
 breakage_axis <- rho
 
 # lists of data names, param names, and param indices
-data_name_list <- list("y", # conditioned on latent state
-                       c("y", "z") # not conditioned on latent state
-                  )
-param_name_list <- list(c("p", "psi", "z"), # conditioned on latent state
-                        c("p", "psi") # not conditioned on latent state
+data_name_list <- list(
+  "y", # conditioned on latent state
+  c("y", "z") # not conditioned on latent state
 )
-param_indices_list <- list(1:(nSites + 2), # conditioned on latent state
-                           1:2 # not conditioned on latent state
+param_name_list <- list(
+  c("p", "psi", "z"), # conditioned on latent state
+  c("p", "psi") # not conditioned on latent state
+)
+param_indices_list <- list(
+  1:(nSites + 2), # conditioned on latent state
+  1:2 # not conditioned on latent state
 )
 
 # discrepancy functions and arguments
@@ -92,12 +93,13 @@ coverage_params <- c(psi, p)
 names(coverage_params) <- c("psi", "p")
 
 # function to generate initial values for MCMC
-init_function <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
-                                  z = pmin(y, 1)) 
+init_function <- function(y) {
+  list(psi = runif(1, 0, 1), p = runif(1, 0, 1), z = pmin(y, 1)) 
+}
 
 # run cppp simulations
 betabin_out <- run_cppp_simulations(
-  constants, simulated_data, model_uncompiled, MCMC_monitors,
+  constants, simulated_data, model_uncompiled, mcmc_monitors,
   breakage_axis, data_name_list,  param_name_list,  param_indices_list, 
   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
   coverage_params, init_function, nDatasets, niter, nburnin, thin,
@@ -108,60 +110,24 @@ betabin_out <- run_cppp_simulations(
 all_data <- betabin_out %>% 
   mutate(all_param = ifelse(psi & p, TRUE, FALSE))
 
-# get density plots
-density_condition <- get_cppp_density_plot(all_data, cdtn = T)
-ggsave("figures/occupancy/betabin/density_true.png",
-       density_condition, dpi = 400, height = 6, width = 6)
 
-density_nocondition <- get_cppp_density_plot(all_data, cdtn = F)
-ggsave("figures/occupancy/betabin/density_false.png",
-       density_nocondition, dpi = 400, height = 6, width = 6)
+########
+# plot #
+########
 
-# get dot plots
-coverpsi_condition <- get_cppp_dot_plot(all_data, param = "psi", 
-                                        breakage_axis_name = "rho", cdtn = T)
-ggsave("figures/occupancy/betabin/cover_psi_true.png",
-       coverpsi_condition, dpi = 400, height = 6, width = 6)
+# print all plots
+get_cppp_plot(plot_type = c("density", "dot", "power"), all_data, 
+              param = c("p", "psi", "all_param"), 
+              breakage_axis_name = "rho", cdtn = c(TRUE, FALSE), 
+              print = TRUE)
 
-coverpsi_nocondition <- get_cppp_dot_plot(all_data, param = "psi", 
-                                          breakage_axis_name = "rho", cdtn = F)
-ggsave("figures/occupancy/betabin/cover_psi_false.png",
-       coverpsi_nocondition, dpi = 400, height = 6, width = 6)
+# save all plots
+get_cppp_plot(plot_type = c("density", "dot", "power"), all_data, 
+              param = c("p", "psi", "all_param"), 
+              breakage_axis_name = "rho", cdtn = c(TRUE, FALSE), 
+              print = FALSE, save = TRUE, 
+              filepath = "figures/occupancy/betabin")
 
-coverp_condition <- get_cppp_dot_plot(all_data, param = "p", 
-                                      breakage_axis_name = "rho", cdtn = T)
-ggsave("figures/occupancy/betabin/cover_p_true.png",
-       coverp_condition, dpi = 400, height = 6, width = 6)
-
-
-coverp_nocondition <- get_cppp_dot_plot(all_data, param = "p", 
-                                        breakage_axis_name = "rho", cdtn = F)
-ggsave("figures/occupancy/betabin/cover_p_false.png",
-       coverp_nocondition, dpi = 400, height = 6, width = 6)
-
-coverall_condition <- get_cppp_dot_plot(all_data, param = "all_param", 
-                                        breakage_axis_name = "rho", cdtn = T)
-ggsave("figures/occupancy/betabin/cover_all_true.png",
-       coverall_condition, dpi = 400, height = 6, width = 6)
-
-coverall_nocondition <- get_cppp_dot_plot(all_data, param = "all_param", 
-                                          breakage_axis_name = "rho", cdtn = F)
-ggsave("figures/occupancy/betabin/cover_all_false.png",
-       coverall_nocondition, dpi = 400, height = 6, width = 6)
-
-# get power plots
-power_plot_psi <- get_cppp_power_plot(all_data, param = "psi", 
-                                      breakage_axis_name = "rho")
-ggsave("figures/occupancy/betabin/power_psi.png",
-       power_plot_psi, dpi = 400, height = 6, width = 7)    
-
-power_plot_p <- get_cppp_power_plot(all_data, param = "p", 
-                                    breakage_axis_name = "rho")
-ggsave("figures/occupancy/betabin/power_p.png",
-       power_plot_p, dpi = 400, height = 6, width = 7)   
-
-
-power_plot_all <- get_cppp_power_plot(all_data, param = "all_param", 
-                                      breakage_axis_name = "rho")
-ggsave("figures/occupancy/betabin/power_all.png",
-       power_plot_all, dpi = 400, height = 6, width = 7)   
+# print one plot
+get_cppp_plot(plot_type = "dot", all_data, param = "all_param", 
+              breakage_axis_name = "rho", cdtn = TRUE, print = TRUE)

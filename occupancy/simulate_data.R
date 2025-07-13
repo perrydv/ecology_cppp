@@ -174,32 +174,32 @@ simulate_betabinomial <- function(params, nSites, nVisits, rho) {
 # pMix is the mixture probability between the two groups
 
 # You can choose to make detection probability change by site or visit. I think
-# changing by visit is unrealistic as I don't think the j'th visit to every site happens
-# on the same day for them to have the same p but the code is here if we want to 
-# explore it.
+# changing by visit is unrealistic as I don't think the j'th visit to every site
+# happens on the same day for them to have the same p but the code is here if 
+# we want to explore it.
 
 simulate_det_pMix <- function(params, nSites, nVisits, 
-                              pMix, hetSource = 'sites') {
+                              pMix, hetSource = "sites") {
   
   y <- matrix(NA, nrow = nSites, ncol = nVisits)
   
   z <- rbinom(nSites, 1, params$psi)
   
-  if(hetSource == 'sites')
+  if (hetSource == "sites")
     
     p <- matrix(c(params$p1, params$p2)[rbinom(nSites, 1, pMix) + 1], 
                 nrow = nSites, ncol = nVisits)
   
-  if(hetSource == 'visits')
+  if (hetSource == "visits")
     
     p <- matrix(c(params$p1, params$p2)[rbinom(nVisits, 1, pMix) + 1], 
-                nrow = nSites, ncol = nVisits, byrow = T)
+                nrow = nSites, ncol = nVisits, byrow = TRUE)
   
   for (i in 1:nSites) {
     
     for (j in 1:nVisits){
       
-      y[i,j] <- rbinom(1, 1, z[i] * p[i,j])
+      y[i, j] <- rbinom(1, 1, z[i] * p[i, j])
       
     }
     
@@ -213,7 +213,7 @@ simulate_det_pMix <- function(params, nSites, nVisits,
 # params requires 2 values 
 #   1. p - probability of detection
 #   2. psi - occupancy probability
-# beta_p models the difference in detection probability between the group and the outliers
+# beta_p models the diff in detection prob between the group and the outliers
 # nOutliers defines how many sites are outliers  
 
 simulate_outlier_det <- function(params, nSites, nVisits, beta_p, nOutliers) {
@@ -224,12 +224,12 @@ simulate_outlier_det <- function(params, nSites, nVisits, beta_p, nOutliers) {
   
   p <- rep(params$p, nSites)
   
-  p[sample(1:nSites, nOutliers, replace = F)] <- 1 / 
+  p[sample(1:nSites, nOutliers, replace = FALSE)] <- 1 / 
     (1 + exp(-(log(params$p / (1 - params$p)) + beta_p)))
   
   for (i in 1:nSites) {
     
-    y[i,] <- rbinom(nVisits, 1, z[i] * p[i])
+    y[i, ] <- rbinom(nVisits, 1, z[i] * p[i])
     
   }
   
@@ -256,7 +256,7 @@ simulate_occ_pMix <- function(params, nRegions, nSites, nVisits, pMix) {
   
   for (i in 1:nSites) {
     
-    y[i,] <- rbinom(nVisits, 1, z[i] * params$p)
+    y[i, ] <- rbinom(nVisits, 1, z[i] * params$p)
     
   }
   
@@ -279,20 +279,19 @@ simulate_outlier_occ <- function(params, nRegions, nSites,
   
   psi_region <- rep(params$psi, nRegions)
   
-  psi_region[sample(1:nRegions, nOutliers, replace = F)] <- 1 / 
+  psi_region[sample(1:nRegions, nOutliers, replace = FALSE)] <- 1 / 
     (1 + exp(-(log(params$psi / (1 - params$psi)) + beta_o)))
   
-  psi <- rep(psi_region, each = nSites/nRegions)
+  psi <- rep(psi_region, each = nSites / nRegions)
   
   z <- rbinom(nSites, 1, psi)
   
   for (i in 1:nSites) {
     
-    y[i,] <- rbinom(nVisits, 1, z[i] * params$p)
+    y[i, ] <- rbinom(nVisits, 1, z[i] * params$p)
     
   }
   
   return(y)
   
 }
-

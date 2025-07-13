@@ -3,55 +3,56 @@
 #########################################
 
 run_cppp_simulations <- function(
-    constants, # model constants (list)
-    simulated_data, # simulated data (array dimensions: nDatasets, length(breakage_axis), nSites)
-    model_uncompiled,
-    MCMC_monitors, # params to monitor in MCMC
-    breakage_axis, # vector
-    data_name_list, # conditioned vs. not conditioned
-    param_name_list, # conditioned vs. not conditioned
-    param_indices_list, # conditioned vs. not conditioned
-    discrepancyFunctions,
-    discrepancyNames,
-    discrepancyFunctionsArgs,
-    coverage_params, # named list with true param values
-    init_function, # function to gerenate initial values
-    nDatasets,
-    niter,
-    nburnin,
-    thin,
-    nCalibrationReplicates
-  ) {
-  
+  constants, # model constants (list)
+  simulated_data, # simulated data dim: nDatasets, len(breakage_axis), nSites)
+  model_uncompiled,
+  mcmc_monitors, # params to monitor in MCMC
+  breakage_axis, # vector
+  data_name_list, # conditioned vs. not conditioned
+  param_name_list, # conditioned vs. not conditioned
+  param_indices_list, # conditioned vs. not conditioned
+  discrepancyFunctions,
+  discrepancyNames,
+  discrepancyFunctionsArgs,
+  coverage_params, # named list with true param values
+  init_function, # function to gerenate initial values
+  nDatasets,
+  niter,
+  nburnin,
+  thin,
+  nCalibrationReplicates
+) {
+
   # create empty list of dataframes to store ppp and cppp
   ppp_out <- list()
   cppp_out <- list()
   coverage <- list()
-  
+
   # compile model
   model <- compileNimble(model_uncompiled)
-  
+
   # configure MCMC
-  mcmc_conf <- configureMCMC(model_uncompiled, monitors = MCMC_monitors)
-  
+  mcmc_conf <- configureMCMC(model_uncompiled, monitors = mcmc_monitors)
+
   # build MCMC
   mcmc <- buildMCMC(mcmc_conf)
-  
+
   # compile mcmc
   compiled_mcmc <- compileNimble(mcmc, project = model, resetFunctions = TRUE)
-  
+
   condition_on_latent_states <- c(TRUE, FALSE)
-  
+
   # calculate for conditioning vs. not conditioning on latent state
-  for (j in 1:length(condition_on_latent_states)) {
-    
+  for (j in seq_along(condition_on_latent_states)) {
+
     if (condition_on_latent_states[j]) {
       # if conditioning on latent state
       dataNames <- data_name_list[[j]]
       paramNames <- param_name_list[[j]]
       paramIndices <- param_indices_list[[j]]
-      simNodes <- unique(c(model$expandNodeNames(dataNames), 
-                           model$getDependencies(paramNames, includeData = FALSE, 
+      simNodes <- unique(c(model$expandNodeNames(dataNames),
+                           model$getDependencies(paramNames,
+                                                 includeData = FALSE,
                                                  self = FALSE)))
       
       # create empty arrays
@@ -74,7 +75,8 @@ run_cppp_simulations <- function(
       paramNames <- param_name_list[[j]]
       paramIndices <- param_indices_list[[j]]
       simNodes <- unique(c(model$expandNodeNames(dataNames), 
-                           model$getDependencies(paramNames, includeData = FALSE, 
+                           model$getDependencies(paramNames, 
+                                                 includeData = FALSE, 
                                                  self = FALSE)))
       
       # create empty arrays
@@ -95,13 +97,15 @@ run_cppp_simulations <- function(
     
     
     # create compiled objects for calculating ppp and cppp
-    modelCalcDisc <- calcDiscrepancies(model = model_uncompiled,
+    modelCalcDisc <- calcDiscrepancies(model = model_uncompiled, 
                                        dataNames = dataNames,
                                        paramNames = paramNames,
                                        paramIndices = paramIndices,
                                        simNodes = simNodes,
-                                       discrepancyFunctions = discrepancyFunctions,
-                                       discrepancyFunctionsArgs = discrepancyFunctionsArgs)
+                                       discrepancyFunctions = 
+                                         discrepancyFunctions,
+                                       discrepancyFunctionsArgs = 
+                                         discrepancyFunctionsArgs)
     
     cModelCalcDisc <- compileNimble(modelCalcDisc, project = model_uncompiled,
                                     resetFunctions = TRUE)
@@ -117,7 +121,7 @@ run_cppp_simulations <- function(
     for (n in 1:nDatasets) {
       
       # loop through rho
-      for (i in 1:length(breakage_axis)) {
+      for (i in seq_along(breakage_axis)) {
         
         # add simulated data **note: assumes data is named y
         model_uncompiled$y <- simulated_data[n, i, ]
@@ -132,7 +136,7 @@ run_cppp_simulations <- function(
                               nburnin = nburnin, thin = thin)
         
         # get coverage
-        for (p in 1:length(coverage_params)) {
+        for (p in seq_along(coverage_params)) {
           bounds <- quantile(MCMCOutput[, names(coverage_params)[p]], 
                              c(0.025, 0.975))
           coverage[[j]][i, n, p] <- coverage_params[p] >= bounds[1] && 
@@ -153,20 +157,25 @@ run_cppp_simulations <- function(
         }
         
         # run calibration
-        out_cal <- runCalibration_sim(
-          model = model_uncompiled, dataNames = dataNames, 
-          paramNames = paramNames, 
-          origMCMCSamples = samples, cModelCalcDisc = cModelCalcDisc, 
-          cMcmc = compiled_mcmc, cSetAndSimPP = cSetAndSimPP,
-          nCalibrationReplicates = nCalibrationReplicates,
-          returnSamples = FALSE, returnDiscrepancies = FALSE) 
+        out_cal <- runCalibration_sim(model = model_uncompiled,
+                                      dataNames = dataNames, 
+                                      paramNames = paramNames,
+                                      origMCMCSamples = samples,
+                                      cModelCalcDisc = cModelCalcDisc,
+                                      cMcmc = compiled_mcmc,
+                                      cSetAndSimPP = cSetAndSimPP,
+                                      nCalibrationReplicates = 
+                                        nCalibrationReplicates,
+                                      returnSamples = FALSE,
+                                      returnDiscrepancies = FALSE) 
         
         # add ppp
         ppp_out[[j]][i, n, ] <- out_cal$obsPPP
         
         # calculate cppp
-        for (k in 1:length(out_cal$obsPPP)) {
-          cppp_out[[j]][i, n, k] <- mean(out_cal$repPPP[k, ] <= out_cal$obsPPP[k])
+        for (k in seq_along(out_cal$obsPPP)) {
+          cppp_out[[j]][i, n, k] <- mean(out_cal$repPPP[k, ] <= 
+                                           out_cal$obsPPP[k])
         }
       }
     }
@@ -188,9 +197,9 @@ run_cppp_simulations <- function(
                "pvalue", "method", "condition"))
   
   data_coverage <- rbind(as.data.frame.table(coverage[[1]]) %>% 
-                          mutate(condition = TRUE),
-                        as.data.frame.table(coverage[[2]]) %>% 
-                          mutate(condition = FALSE)) %>% 
+                           mutate(condition = TRUE),
+                         as.data.frame.table(coverage[[2]]) %>% 
+                           mutate(condition = FALSE)) %>% 
     setNames(c("breakage_axis", "sim", "par", "coverage", "condition")) %>% 
     pivot_wider(names_from = par, values_from = coverage)
   
@@ -257,7 +266,7 @@ get_cppp_power_plot <- function(all_data, param, breakage_axis_name) {
   # convert data to long
   all_data_long <- all_data %>% 
     mutate(pvalue_disc = cut(pvalue, c(0, 0.05, 1), 
-                             include.lowest = T)) %>% 
+                             include.lowest = TRUE)) %>% 
     pivot_longer(c(p, psi, all_param)) %>% 
     group_by(breakage_axis, discrepancy, method, 
              condition, pvalue_disc, name, value) %>% 
@@ -269,10 +278,10 @@ get_cppp_power_plot <- function(all_data, param, breakage_axis_name) {
   
   plot <- all_data_long %>% 
     filter(name == param) %>% 
-    ggplot()+
+    ggplot() +
     geom_bar(aes(x = breakage_axis, y = n, 
                  fill = interaction(pvalue_disc, value)), 
-             stat = "identity")+
+             stat = "identity") +
     facet_grid(discrepancy ~ condition + method) +
     labs(x = breakage_axis_name) +
     ggtitle(paste(param, " coverage")) +
@@ -283,4 +292,58 @@ get_cppp_power_plot <- function(all_data, param, breakage_axis_name) {
     theme_minimal(base_family = "Arial")
   
   return(plot)
+}
+
+get_cppp_plot <- function(plot_type, all_data, param = NULL, 
+                          breakage_axis_name = NULL, cdtn = NULL, 
+                          print = TRUE, save = FALSE,
+                          filepath = NULL) {
+  
+  if ("density" %in% plot_type) {
+    
+    for (i in seq_along(cdtn)) {
+      
+      plot <- get_cppp_density_plot(all_data, cdtn[i])
+      if (print) {
+        print(plot)
+      }
+      if (save) {
+        ggsave(paste0(filepath, "/density_", cdtn[i], ".png"),
+               plot, dpi = 400, height = 6, width = 6)
+      }
+    }
+    
+  } else if ("dot" %in% plot_type) {
+    
+    for (i in seq_along(cdtn)) {
+      
+      for (j in seq_along(param)) {
+        
+        plot <- get_cppp_dot_plot(all_data, param[j], 
+                                  breakage_axis_name, cdtn[i])
+        if (print) {
+          print(plot)
+        }
+        if (save) {
+          ggsave(paste0(filepath, "/cover_", param[j], "_", cdtn[i], ".png"),
+                 plot, dpi = 400, height = 6, width = 6)
+        }
+        
+      }
+    }
+  } else if ("power" %in% plot_type) {
+    
+    for (i in seq_along(param)) {
+      
+      plot <- get_cppp_power_plot(all_data, param[i], breakage_axis_name)
+      if (print) {
+        print(plot)
+      }
+      if (save) {
+        ggsave(paste0(filepath, "/power_", param[i], ".png"),
+               plot, dpi = 400, height = 6, width = 7)
+      }
+      
+    }
+  }
 }

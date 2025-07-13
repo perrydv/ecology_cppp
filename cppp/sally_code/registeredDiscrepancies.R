@@ -4,7 +4,7 @@
 
 ## discrepancy base class
 discrepancyFunction_BASE <- nimbleFunctionVirtual(
-    run = function() returnType(double())
+  run = function() returnType(double())
 )
 
 # discrepancyFunction_BASE_VEC <- nimbleFunctionVirtual(
@@ -14,13 +14,12 @@ discrepancyFunction_BASE <- nimbleFunctionVirtual(
 ## Data log-likelihood discrepancy function
 logLikDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,
-  setup = function(model, discrepancyFunctionsArgs){
-    dataNames <- discrepancyFunctionsArgs[['dataNames']]
+  setup = function(model, discrepancyFunctionsArgs) {
+    dataNames <- discrepancyFunctionsArgs[["dataNames"]]
   },
-  run = function(){
+  run = function() {
     disc <- model$getLogProb(dataNames)
     returnType(double(0)) 
     return(disc)
   }
 )
-

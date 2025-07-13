@@ -270,7 +270,7 @@ model_spatial_ranef <- nimbleCode({
   
   psi[1:nRegions] <- ilogit(psi_logit[1:nRegions])
   
-  for(r in 1:nRegions){
+  for (r in 1:nRegions) {
     
     psi_logit[r] ~ dnorm(psi_mean, psi_sd)
     
@@ -279,14 +279,14 @@ model_spatial_ranef <- nimbleCode({
     
   }
   
-  for(i in 1:nSites) {
+  for (i in 1:nSites) {
     
     z[i] ~ dbern(psi[region[i]])
     
     # posterior predictive replicated data
     z_rep[i] ~ dbern(ilogit(psi_logit_rep[region[i]]))
     
-    for(j in 1:nVisits) {
+    for (j in 1:nVisits) {
       
       # observed data
       y[i, j] ~ dbern(z[i] * p)
@@ -506,17 +506,13 @@ model_cov_occ_zdisc <- nimbleCode({
                                        y_exp_rep[1:nSites, 1:nVisits])
   
   # chi-squared z
-  chi_z_obs_total <- calc_chi_v(z[1:nSites],
-                            psi[1:nSites])
-  chi_z_rep_total <- calc_chi_v(z_rep[1:nSites],
-                            psi[1:nSites])
+  chi_z_obs_total <- calc_chi_v(z[1:nSites], psi[1:nSites])
+  chi_z_rep_total <- calc_chi_v(z_rep[1:nSites], psi[1:nSites])
   
   
   # freeman tukey z
-  tukey_z_obs_total <- calc_tukey_v(z[1:nSites],
-                                psi[1:nSites])
-  tukey_z_rep_total <- calc_tukey_v(z_rep[1:nSites],
-                                psi[1:nSites])
+  tukey_z_obs_total <- calc_tukey_v(z[1:nSites], psi[1:nSites])
+  tukey_z_rep_total <- calc_tukey_v(z_rep[1:nSites], psi[1:nSites])
   
 })
 
@@ -527,8 +523,8 @@ model_cov_occ_zdisc <- nimbleCode({
 calc_chi <- nimbleFunction(
   
   run = function(y = double(2), 
-                 y_exp = double(2))
-  {
+                 y_exp = double(2)) {
+    
     returnType(double(0))
     
     # calculate chi squared discrepancy measure
@@ -541,8 +537,8 @@ calc_chi <- nimbleFunction(
 calc_chi_v <- nimbleFunction(
   
   run = function(y = double(1), 
-                 y_exp = double(1))
-  {
+                 y_exp = double(1)) {
+    
     returnType(double(0))
     
     # calculate chi squared discrepancy measure
@@ -557,13 +553,13 @@ calc_chi_v <- nimbleFunction(
 calc_ratio <- nimbleFunction(
   
   run = function(y = double(2), 
-                 y_exp = double(2))
-  {
+                 y_exp = double(2)) {
+    
     returnType(double(0))
     
     # calculate likelihood ratio discrepancy measure
     ratio_out <- 2 * (y * log((y + 1e-6) / (y_exp + 1e-6)) + (1 - y) * 
-                        log((1 - y + 1e-6)/(1 - y_exp + 1e-6)))
+                        log((1 - y + 1e-6) / (1 - y_exp + 1e-6)))
     
     return(sum(ratio_out))
   }
@@ -572,8 +568,8 @@ calc_ratio <- nimbleFunction(
 calc_tukey <- nimbleFunction(
   
   run = function(y = double(2), 
-                 y_exp = double(2))
-  {
+                 y_exp = double(2)) {
+    
     returnType(double(0))
     
     # calculate freeman tukey discrepancy measure
@@ -587,8 +583,8 @@ calc_tukey <- nimbleFunction(
 calc_tukey_v <- nimbleFunction(
   
   run = function(y = double(1), 
-                 y_exp = double(1))
-  {
+                 y_exp = double(1)) {
+    
     returnType(double(0))
     
     # calculate freeman tukey discrepancy measure
@@ -601,8 +597,8 @@ calc_tukey_v <- nimbleFunction(
 calc_chi_betabin <- nimbleFunction(
   
   run = function(y = double(1), 
-                 y_exp = double(1))
-  {
+                 y_exp = double(1)) {
+    
     returnType(double(0))
     
     # calculate chi squared discrepancy measure
@@ -616,13 +612,13 @@ calc_ratio_betabin <- nimbleFunction(
   
   run = function(y = double(1), 
                  y_exp = double(1),
-                 nVisits = double(0))
-  {
+                 nVisits = double(0)) {
+    
     returnType(double(0))
     
     # calculate likelihood ratio discrepancy measure
     ratio_out <- 2 * (y * log((y + 1e-6) / (y_exp + 1e-6)) + (nVisits - y) * 
-                        log((nVisits - y + 1e-6)/(nVisits - y_exp + 1e-6)))
+                        log((nVisits - y + 1e-6) / (nVisits - y_exp + 1e-6)))
     
     return(sum(ratio_out))
   }
@@ -631,8 +627,8 @@ calc_ratio_betabin <- nimbleFunction(
 calc_tukey_betabin <- nimbleFunction(
   
   run = function(y = double(1), 
-                 y_exp = double(1))
-  {
+                 y_exp = double(1)) {
+    
     returnType(double(0))
     
     # calculate freeman tukey discrepancy measure
@@ -649,11 +645,11 @@ calc_tukey_betabin <- nimbleFunction(
 fit_basic <- function(compiled_model, compiled_mcmc, niter, nburnin, thin) {
   
   # function for generating initial values
-  inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
-                            z = pmin(rowSums(y), 1),
-                            z_rep = rep(NA, nrow(y)),
-                            y_rep = matrix(NA, nrow(y), ncol(y)),
-                            y_rep_latent = matrix(NA, nrow(y), ncol(y))) 
+  inits <- function(y) {
+    list(psi = runif(1, 0, 1), p = runif(1, 0, 1), z = pmin(rowSums(y), 1),
+         z_rep = rep(NA, nrow(y)), y_rep = matrix(NA, nrow(y), ncol(y)),
+         y_rep_latent = matrix(NA, nrow(y), ncol(y))) 
+  }
   
   # add initial values
   compiled_model$setInits(inits(compiled_model$y))
@@ -670,12 +666,11 @@ fit_cov_occ <- function(compiled_model, compiled_mcmc, ncov,
                         niter, nburnin, thin) {
   
   # function for generating initial values
-  inits <- function(y, ncov) list(beta = rnorm(ncov, 0, 1), 
-                                  p = runif(1, 0, 1), 
-                                  z = pmin(rowSums(y), 1),
-                                  z_rep = rep(NA, nrow(y)),
-                                  y_rep = matrix(NA, nrow(y), ncol(y)),
-                                  y_rep_latent = matrix(NA, nrow(y), ncol(y)))  
+  inits <- function(y, ncov) {
+    list(beta = rnorm(ncov, 0, 1), p = runif(1, 0, 1), z = pmin(rowSums(y), 1),
+         z_rep = rep(NA, nrow(y)), y_rep = matrix(NA, nrow(y), ncol(y)),
+         y_rep_latent = matrix(NA, nrow(y), ncol(y)))  
+  }
   
   # add initial values
   compiled_model$setInits(inits(compiled_model$y, ncov))
@@ -692,14 +687,12 @@ fit_cov_occ_det <- function(compiled_model, compiled_mcmc, ncov_o,
                             ncov_p, niter, nburnin, thin) {
   
   # function for generating initial values
-  inits <- function(y, ncov_o, ncov_p) list(beta_o = rnorm(ncov_o, 0, 1), 
-                                            beta_p = rnorm(ncov_p, 0, 1), 
-                                            z_rep = rep(NA, nrow(y)),
-                                            z = pmin(rowSums(y), 1),
-                                            y_rep = matrix(NA, nrow(y), 
-                                                           ncol(y)),
-                                            y_rep_latent = matrix(NA, nrow(y), 
-                                                                  ncol(y)))  
+  inits <- function(y, ncov_o, ncov_p) {
+    list(beta_o = rnorm(ncov_o, 0, 1), beta_p = rnorm(ncov_p, 0, 1), 
+         z_rep = rep(NA, nrow(y)), z = pmin(rowSums(y), 1),
+         y_rep = matrix(NA, nrow(y), ncol(y)),
+         y_rep_latent = matrix(NA, nrow(y), ncol(y)))  
+  }
   
   # add initial values
   compiled_model$setInits(inits(compiled_model$y, ncov_o, ncov_p))
@@ -715,13 +708,14 @@ fit_spatial_ranef <- function(compiled_model, compiled_mcmc, region,
                               nRegions, niter, nburnin, thin) {
   
   # function for generating initial values
-  inits <- function(y, nRegions) list(
-    psi_mean = 0, psi_sd = 1, p = runif(1, 0, 1),
-    psi_logit = logit(runif(nRegions, 0, 1)), 
-    z = pmin(rowSums(y), 1), z_rep = rep(NA, nrow(y)),
-    y_rep = matrix(NA, nrow(y), ncol(y)),
-    y_rep_latent = matrix(NA, nrow(y), ncol(y))
-  )  
+  inits <- function(y, nRegions) {
+    list(psi_mean = 0, psi_sd = 1, p = runif(1, 0, 1), 
+      psi_logit = logit(runif(nRegions, 0, 1)), 
+      z = pmin(rowSums(y), 1), z_rep = rep(NA, nrow(y)),
+      y_rep = matrix(NA, nrow(y), ncol(y)),
+      y_rep_latent = matrix(NA, nrow(y), ncol(y))
+    )
+  }
   
   # add initial values
   compiled_model$setInits(inits(compiled_model$y, nRegions))
@@ -737,11 +731,11 @@ fit_basic_betabin <- function(compiled_model, compiled_mcmc,
                               niter, nburnin, thin) {
   
   # function for generating initial values
-  inits <- function(y) list(psi = runif(1, 0, 1), p = runif(1, 0, 1), 
-                            z = pmin(y, 1),
-                            z_rep = rep(NA, length(y)),
-                            y_rep = rep(NA, length(y)),
-                            y_rep_latent = rep(NA, length(y))) 
+  inits <- function(y) {
+    list(psi = runif(1, 0, 1), p = runif(1, 0, 1), z = pmin(y, 1),
+         z_rep = rep(NA, length(y)), y_rep = rep(NA, length(y)),
+         y_rep_latent = rep(NA, length(y))) 
+  }
   
   # add initial values
   compiled_model$setInits(inits(compiled_model$y))
@@ -752,4 +746,3 @@ fit_basic_betabin <- function(compiled_model, compiled_mcmc,
   
   return(samples)
 }
-
