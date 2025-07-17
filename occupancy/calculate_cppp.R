@@ -108,26 +108,7 @@ betabin_out <- run_cppp_simulations(
 
 # add new column to output
 all_data <- betabin_out %>% 
-  mutate(all_param = ifelse(psi & p, TRUE, FALSE))
+  mutate(all_param = ifelse(psi_coverage & p_coverage, TRUE, FALSE))
+saveRDS(all_data, "occupancy/saved_outputs/output_betabin.rds")
 
 
-########
-# plot #
-########
-
-# print all plots
-get_cppp_plot(plot_type = c("density", "dot", "power"), all_data, 
-              param = c("p", "psi", "all_param"), 
-              breakage_axis_name = "rho", cdtn = c(TRUE, FALSE), 
-              print = TRUE)
-
-# save all plots
-get_cppp_plot(plot_type = c("density", "dot", "power"), all_data, 
-              param = c("p", "psi", "all_param"), 
-              breakage_axis_name = "rho", cdtn = c(TRUE, FALSE), 
-              print = FALSE, save = TRUE, 
-              filepath = "figures/occupancy/betabin")
-
-# print one plot
-get_cppp_plot(plot_type = "dot", all_data, param = "all_param", 
-              breakage_axis_name = "rho", cdtn = TRUE, print = TRUE)

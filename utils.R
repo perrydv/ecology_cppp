@@ -27,6 +27,7 @@ run_cppp_simulations <- function(
   ppp_out <- list()
   cppp_out <- list()
   coverage <- list()
+  bias <- list()
 
   # compile model
   model <- compileNimble(model_uncompiled)
@@ -67,6 +68,9 @@ run_cppp_simulations <- function(
       coverage[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 2),
                              dimnames = list(breakage_axis, 1:nDatasets, 
                                              names(coverage_params)))
+      bias[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 2),
+                         dimnames = list(breakage_axis, 1:nDatasets, 
+                                         names(coverage_params)))
       
       
     } else {
@@ -92,6 +96,9 @@ run_cppp_simulations <- function(
                                          length(coverage_params)),
                              dimnames = list(breakage_axis, 1:nDatasets, 
                                              names(coverage_params)))
+      bias[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 2),
+                         dimnames = list(breakage_axis, 1:nDatasets, 
+                                         names(coverage_params)))
       
     }
     
@@ -135,12 +142,15 @@ run_cppp_simulations <- function(
         MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
                               nburnin = nburnin, thin = thin)
         
-        # get coverage
+        # get coverage and bias
         for (p in seq_along(coverage_params)) {
           bounds <- quantile(MCMCOutput[, names(coverage_params)[p]], 
                              c(0.025, 0.975))
           coverage[[j]][i, n, p] <- coverage_params[p] >= bounds[1] && 
             coverage_params[p] <= bounds[2]
+          bias[[j]][i, n, p] <- abs(
+            mean(MCMCOutput[, names(coverage_params)[p]]) - coverage_params[p]
+          )
         }     
         
         
@@ -203,7 +213,16 @@ run_cppp_simulations <- function(
     setNames(c("breakage_axis", "sim", "par", "coverage", "condition")) %>% 
     pivot_wider(names_from = par, values_from = coverage)
   
-  all_data <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage)
+  data_bias <- rbind(as.data.frame.table(bias[[1]]) %>% 
+                           mutate(condition = TRUE),
+                         as.data.frame.table(bias[[2]]) %>% 
+                           mutate(condition = FALSE)) %>% 
+    setNames(c("breakage_axis", "sim", "par", "bias", "condition")) %>% 
+    pivot_wider(names_from = par, values_from = bias,
+                names_glue = "{par}_bias")
+  
+  all_data <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage) %>% 
+    left_join(data_bias)
   
   return(all_data)
 }
@@ -237,11 +256,37 @@ get_cppp_density_plot <- function(all_data, cdtn) {
   return(plot)
 }
 
-# dot plot
-get_cppp_dot_plot <- function(all_data, param, breakage_axis_name, cdtn) {
+# dot plot - bias
+get_cppp_dot_bias_plot <- function(all_data, param, breakage_axis_name, cdtn) {
+  
+  param_full <- paste0(param, "_bias")
+  
+  title <- ifelse(cdtn, paste0(param, " bias, conditioned on latent state"),
+                  paste0(param, " bias, not conditioned on latent state"))
+  
+  plot <- all_data %>% 
+    filter(condition == cdtn) %>% 
+    ggplot(aes(x = as.factor(breakage_axis), y = pvalue, 
+               shape = as.factor(method), color = !!sym(param_full), 
+               group = method)) +
+    geom_jitter(position = position_jitterdodge(dodge.width = 0.8)) +
+    facet_grid(discrepancy ~ .) +
+    #scale_color_manual(values = c("black", NA)) +
+    labs(x = breakage_axis_name, y = "p-value", 
+         color = "bias", shape = "") +
+    geom_hline(yintercept = 0.05, linetype = 2) +
+    ggtitle(title) +
+    theme_minimal(base_family = "Arial")
+  
+  return(plot)
+}
+
+# dot plot - coverage
+get_cppp_dot_coverage_plot <- function(all_data, param, 
+                                       breakage_axis_name, cdtn) {
   
   title <- ifelse(cdtn, paste0(param, " coverage, conditioned on latent state"),
-                  paste0(param, " coverage, conditioned on latent state"))
+                  paste0(param, " coverage, not conditioned on latent state"))
   
   plot <- all_data %>% 
     filter(condition == cdtn) %>% 
@@ -284,7 +329,7 @@ get_cppp_power_plot <- function(all_data, param, breakage_axis_name) {
              stat = "identity") +
     facet_grid(discrepancy ~ condition + method) +
     labs(x = breakage_axis_name) +
-    ggtitle(paste(param, " coverage")) +
+    ggtitle(paste(param)) +
     scale_fill_brewer(palette = "Set1",
                       labels = c("True Positive", "False Negative", 
                                  "False Positive", "True Negative"), 
@@ -313,14 +358,16 @@ get_cppp_plot <- function(plot_type, all_data, param = NULL,
       }
     }
     
-  } else if ("dot" %in% plot_type) {
+  } 
+  
+  if ("dot_coverage" %in% plot_type) {
     
     for (i in seq_along(cdtn)) {
       
       for (j in seq_along(param)) {
         
-        plot <- get_cppp_dot_plot(all_data, param[j], 
-                                  breakage_axis_name, cdtn[i])
+        plot <- get_cppp_dot_coverage_plot(all_data, param[j], 
+                                           breakage_axis_name, cdtn[i])
         if (print) {
           print(plot)
         }
@@ -331,7 +378,32 @@ get_cppp_plot <- function(plot_type, all_data, param = NULL,
         
       }
     }
-  } else if ("power" %in% plot_type) {
+  } 
+  
+  if ("dot_bias" %in% plot_type) {
+    
+    param_bias <- param[param != "all_param"]
+    
+    for (i in seq_along(cdtn)) {
+      
+      for (j in seq_along(param_bias)) {
+        
+        plot <- get_cppp_dot_bias_plot(all_data, param_bias[j], 
+                                       breakage_axis_name, cdtn[i])
+        if (print) {
+          print(plot)
+        }
+        if (save) {
+          ggsave(paste0(filepath, "/bias_", param_bias[j], "_", 
+                        cdtn[i], ".png"),
+                 plot, dpi = 400, height = 6, width = 6)
+        }
+        
+      }
+    }
+  } 
+  
+  if ("power" %in% plot_type) {
     
     for (i in seq_along(param)) {
       
