@@ -343,3 +343,73 @@ tukeyDiscFunction_z <- nimbleFunction(
     
   }
 )
+
+## chi-squared discrepancy function - site-level covariates
+chisqDiscFunction_z_cov <- nimbleFunction(
+  contains = discrepancyFunction_BASE,
+  setup = function(model, discrepancyFunctionsArgs) {
+    
+    y <- discrepancyFunctionsArgs[["y"]]
+    x_site <- discrepancyFunctionsArgs[["x_site"]]
+    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
+    beta <- discrepancyFunctionsArgs[["beta"]]
+    latent_occ <- discrepancyFunctionsArgs[["latent_occ"]]
+  },
+  run = function() {
+    
+    ## values 
+    obs_z <- values(model, latent_occ)
+    
+    # get number of sites
+    nsites <- length(obs_z)
+    
+    x <- matrix(values(model, x_site), nrow = nsites)
+    coef <- values(model, beta)
+    psi <- ilogit(x %*% coef)[, 1]
+    
+    chi_out <- 0
+    for (i in 1:nsites) {
+      stat <- (obs_z[i] - psi[i]) ^ 2 / (psi[i] + 1e-6)
+      chi_out <- chi_out + stat
+    }
+    
+    returnType(double(0)) 
+    return(chi_out)
+  }
+)
+
+## tukey discrepancy function - site-level covariates
+tukeyDiscFunction_z_cov <- nimbleFunction(
+  contains = discrepancyFunction_BASE,
+  setup = function(model, discrepancyFunctionsArgs) {
+    
+    y <- discrepancyFunctionsArgs[["y"]]
+    x_site <- discrepancyFunctionsArgs[["x_site"]]
+    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
+    beta <- discrepancyFunctionsArgs[["beta"]]
+    latent_occ <- discrepancyFunctionsArgs[["latent_occ"]]
+    
+  },
+  run = function() {
+    
+    ## values 
+    obs_z <- values(model, latent_occ)
+    
+    # get number of sites
+    nsites <- length(obs_z)
+    
+    x <- matrix(values(model, x_site), nrow = nsites)
+    coef <- values(model, beta)
+    psi <- ilogit(x %*% coef)[, 1]
+    
+    tukey_out <- 0
+    
+    for (i in 1:nsites) { 
+      tukey_out <- tukey_out + (sqrt(obs_z[i]) - sqrt(psi[i])) ^ 2
+    }
+    
+    returnType(double(0)) 
+    return(tukey_out)
+    
+  }
+)

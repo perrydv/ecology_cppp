@@ -4,7 +4,8 @@
 
 run_cppp_simulations <- function(
   constants, # model constants (list)
-  simulated_data, # simulated data dim: nDatasets, len(breakage_axis), nSites)
+  simulated_data, # simulated data (list)
+  sim_data_names,
   model_uncompiled,
   mcmc_monitors, # params to monitor in MCMC
   breakage_axis, # vector
@@ -16,11 +17,13 @@ run_cppp_simulations <- function(
   discrepancyFunctionsArgs,
   coverage_params, # named list with true param values
   init_function, # function to gerenate initial values
+  init_args,
   nDatasets,
   niter,
   nburnin,
   thin,
-  nCalibrationReplicates
+  nCalibrationReplicates,
+  condition_on_latent_states
 ) {
 
   # create empty list of dataframes to store ppp and cppp
@@ -41,15 +44,13 @@ run_cppp_simulations <- function(
   # compile mcmc
   compiled_mcmc <- compileNimble(mcmc, project = model, resetFunctions = TRUE)
 
-  condition_on_latent_states <- c(TRUE, FALSE)
-
   # calculate for conditioning vs. not conditioning on latent state
   for (j in seq_along(condition_on_latent_states)) {
 
     if (condition_on_latent_states[j]) {
       # if conditioning on latent state
       dataNames <- data_name_list[[j]]
-      paramNames <- param_name_list[[j]]
+      paramNames <- model$expandNodeNames(param_name_list[[j]])
       paramIndices <- param_indices_list[[j]]
       simNodes <- unique(c(model$expandNodeNames(dataNames),
                            model$getDependencies(paramNames,
@@ -65,10 +66,12 @@ run_cppp_simulations <- function(
                                          length(discrepancyFunctions)),
                              dimnames = list(breakage_axis, 1:nDatasets, 
                                              discrepancyNames))
-      coverage[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 2),
+      coverage[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 
+                                         length(coverage_params)),
                              dimnames = list(breakage_axis, 1:nDatasets, 
                                              names(coverage_params)))
-      bias[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 2),
+      bias[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 
+                                     length(coverage_params)),
                          dimnames = list(breakage_axis, 1:nDatasets, 
                                          names(coverage_params)))
       
@@ -76,7 +79,7 @@ run_cppp_simulations <- function(
     } else {
       # if *not* conditioning on latent state
       dataNames <- data_name_list[[j]]
-      paramNames <- param_name_list[[j]]
+      paramNames <- model$expandNodeNames(param_name_list[[j]])
       paramIndices <- param_indices_list[[j]]
       simNodes <- unique(c(model$expandNodeNames(dataNames), 
                            model$getDependencies(paramNames, 
@@ -96,7 +99,8 @@ run_cppp_simulations <- function(
                                          length(coverage_params)),
                              dimnames = list(breakage_axis, 1:nDatasets, 
                                              names(coverage_params)))
-      bias[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 2),
+      bias[[j]] <- array(NA, dim = c(length(breakage_axis), nDatasets, 
+                                     length(coverage_params)),
                          dimnames = list(breakage_axis, 1:nDatasets, 
                                          names(coverage_params)))
       
@@ -127,16 +131,23 @@ run_cppp_simulations <- function(
     # simulate n datasets
     for (n in 1:nDatasets) {
       
-      # loop through rho
+      # loop through breakage axis
       for (i in seq_along(breakage_axis)) {
         
-        # add simulated data **note: assumes data is named y
-        model_uncompiled$y <- simulated_data[n, i, ]
-        model$y <- simulated_data[n, i, ]
+        simulated_data_sub <- list()
+        for (a in seq_along(sim_data_names)) {
+          dims <- length(dim(simulated_data[[a]]))
+          if (dims == 3) {
+            simulated_data_sub[[a]] <- simulated_data[[a]][n, i, ] 
+          } else if (dims == 4) {
+            simulated_data_sub[[a]] <- simulated_data[[a]][n, i, , ] 
+          }
+        }
         
-        # add inits
-        model_uncompiled$setInits(init_function(model_uncompiled$y))
-        model$setInits(init_function(model$y))
+        # add data and inits
+        add_data_inits(model_uncompiled, model, simulated_data_sub, 
+                       sim_data_names,
+                       init_function, init_args)
         
         # generate samples
         MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
@@ -191,40 +202,86 @@ run_cppp_simulations <- function(
     }
   }
   
-  # convert from lists to arrays
-  data_ppp <- rbind(as.data.frame.table(ppp_out[[1]]) %>% 
-                      mutate(method = "ppp", condition = TRUE),
-                    as.data.frame.table(ppp_out[[2]]) %>% 
-                      mutate(method = "ppp", condition = FALSE)) %>% 
-    setNames(c("breakage_axis", "sim", "discrepancy", 
-               "pvalue", "method", "condition"))
-  
-  data_cppp <- rbind(as.data.frame.table(cppp_out[[1]]) %>% 
-                       mutate(method = "cppp", condition = TRUE),
-                     as.data.frame.table(cppp_out[[2]]) %>% 
-                       mutate(method = "cppp", condition = FALSE)) %>% 
-    setNames(c("breakage_axis", "sim", "discrepancy", 
-               "pvalue", "method", "condition"))
-  
-  data_coverage <- rbind(as.data.frame.table(coverage[[1]]) %>% 
-                           mutate(condition = TRUE),
-                         as.data.frame.table(coverage[[2]]) %>% 
-                           mutate(condition = FALSE)) %>% 
-    setNames(c("breakage_axis", "sim", "par", "coverage", "condition")) %>% 
-    pivot_wider(names_from = par, values_from = coverage)
-  
-  data_bias <- rbind(as.data.frame.table(bias[[1]]) %>% 
-                           mutate(condition = TRUE),
-                         as.data.frame.table(bias[[2]]) %>% 
-                           mutate(condition = FALSE)) %>% 
-    setNames(c("breakage_axis", "sim", "par", "bias", "condition")) %>% 
-    pivot_wider(names_from = par, values_from = bias,
-                names_glue = "{par}_bias")
-  
-  all_data <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage) %>% 
-    left_join(data_bias)
+  if (all(c("TRUE", "FALSE") %in% condition_on_latent_states)) {
+    
+    # convert from lists to arrays
+    data_ppp <- rbind(as.data.frame.table(ppp_out[[1]]) %>% 
+                        mutate(method = "ppp", condition = TRUE),
+                      as.data.frame.table(ppp_out[[2]]) %>% 
+                        mutate(method = "ppp", condition = FALSE)) %>% 
+      setNames(c("breakage_axis", "sim", "discrepancy", 
+                 "pvalue", "method", "condition"))
+    
+    data_cppp <- rbind(as.data.frame.table(cppp_out[[1]]) %>% 
+                         mutate(method = "cppp", condition = TRUE),
+                       as.data.frame.table(cppp_out[[2]]) %>% 
+                         mutate(method = "cppp", condition = FALSE)) %>% 
+      setNames(c("breakage_axis", "sim", "discrepancy", 
+                 "pvalue", "method", "condition"))
+    
+    data_coverage <- rbind(as.data.frame.table(coverage[[1]]) %>% 
+                             mutate(condition = TRUE),
+                           as.data.frame.table(coverage[[2]]) %>% 
+                             mutate(condition = FALSE)) %>% 
+      setNames(c("breakage_axis", "sim", "par", "coverage", "condition")) %>% 
+      pivot_wider(names_from = par, values_from = coverage)
+    
+    data_bias <- rbind(as.data.frame.table(bias[[1]]) %>% 
+                         mutate(condition = TRUE),
+                       as.data.frame.table(bias[[2]]) %>% 
+                         mutate(condition = FALSE)) %>% 
+      setNames(c("breakage_axis", "sim", "par", "bias", "condition")) %>% 
+      pivot_wider(names_from = par, values_from = bias,
+                  names_glue = "{par}_bias")
+    
+    all_data <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage) %>% 
+      left_join(data_bias)
+  } else {
+    
+    # convert from lists to arrays
+    data_ppp <- as.data.frame.table(ppp_out[[1]]) %>% 
+      mutate(method = "ppp", condition = condition_on_latent_states) %>% 
+      setNames(c("breakage_axis", "sim", "discrepancy", 
+                 "pvalue", "method", "condition"))
+    
+    data_cppp <- as.data.frame.table(cppp_out[[1]]) %>% 
+      mutate(method = "cppp", condition = condition_on_latent_states) %>% 
+      setNames(c("breakage_axis", "sim", "discrepancy", 
+                 "pvalue", "method", "condition"))
+    
+    data_coverage <- as.data.frame.table(coverage[[1]]) %>% 
+      mutate(condition = condition_on_latent_states) %>% 
+      setNames(c("breakage_axis", "sim", "par", "coverage", "condition")) %>% 
+      pivot_wider(names_from = par, values_from = coverage)
+    
+    data_bias <- as.data.frame.table(bias[[1]]) %>% 
+      mutate(condition = condition_on_latent_states) %>% 
+      setNames(c("breakage_axis", "sim", "par", "bias", "condition")) %>% 
+      pivot_wider(names_from = par, values_from = bias,
+                  names_glue = "{par}_bias")
+    
+    all_data <- bind_rows(data_ppp, data_cppp) %>% left_join(data_coverage) %>% 
+      left_join(data_bias)
+  }
   
   return(all_data)
+}
+
+add_data_inits <- function(model_uncompiled, model, simulated_data,
+                           sim_data_names, init_function, init_args) {
+  
+  # add data
+  for (i in seq_along(sim_data_names)) {
+    
+    values(model, sim_data_names[i]) <- as.vector(simulated_data[[i]])
+    values(model_uncompiled, 
+           sim_data_names[i]) <- as.vector(simulated_data[[i]])
+    
+  }
+  
+  # add initial values
+  model$setInits(init_function(simulated_data, init_args))
+  model_uncompiled$setInits(init_function(simulated_data, init_args))
 }
 
 
