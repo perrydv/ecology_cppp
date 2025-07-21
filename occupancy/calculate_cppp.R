@@ -215,8 +215,8 @@ sitecov_out <- run_cppp_simulations(
 ) 
 
 # add new column to output
-# all_data <- betabin_out %>% 
-#   mutate(all_param = ifelse(psi_coverage & p_coverage, TRUE, FALSE))
-saveRDS(sitecov_out, "occupancy/saved_outputs/output_sitecov.rds")
+all_data <- sitecov_out %>%
+  mutate(all_param = ifelse(`beta[1]` & `beta[2]` & p, TRUE, FALSE))
+saveRDS(all_data, "occupancy/saved_outputs/output_sitecov.rds")
 
 

@@ -369,7 +369,7 @@ get_cppp_power_plot <- function(all_data, param, breakage_axis_name) {
   all_data_long <- all_data %>% 
     mutate(pvalue_disc = cut(pvalue, c(0, 0.05, 1), 
                              include.lowest = TRUE)) %>% 
-    pivot_longer(c(p, psi, all_param)) %>% 
+    pivot_longer(param) %>% 
     group_by(breakage_axis, discrepancy, method, 
              condition, pvalue_disc, name, value) %>% 
     tally() %>% 
