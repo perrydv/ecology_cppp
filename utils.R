@@ -23,7 +23,10 @@ run_cppp_simulations <- function(
   nburnin,
   thin,
   nCalibrationReplicates,
-  condition_on_latent_states
+  condition_on_latent_states,
+  MCMCcontrol = list(niter = 500,
+                     thin = 1,
+                     nburnin = 0)
 ) {
 
   # create empty list of dataframes to store ppp and cppp
@@ -187,8 +190,9 @@ run_cppp_simulations <- function(
                                       cSetAndSimPP = cSetAndSimPP,
                                       nCalibrationReplicates = 
                                         nCalibrationReplicates,
-                                      returnSamples = FALSE,
-                                      returnDiscrepancies = FALSE) 
+                                      MCMCcontrol,
+                                      returnSamples = TRUE,
+                                      returnDiscrepancies = TRUE) 
         
         # add ppp
         ppp_out[[j]][i, n, ] <- out_cal$obsPPP

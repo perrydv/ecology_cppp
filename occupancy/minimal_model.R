@@ -20,7 +20,7 @@ model_cov_occ <- nimbleCode({
   
   p ~ dunif(0, 1)
   for (c in 1:ncov) {
-    beta[c] ~ dunif(-10, 10)
+    beta[c] ~ dunif(-100, 100)
   }
   
   # logit link - site-level covariates

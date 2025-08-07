@@ -40,6 +40,43 @@ chisqDiscFunction <- nimbleFunction(
   }
 )
 
+## chi-squared discrepancy function - site cov
+chisqDiscFunction_sitecov <- nimbleFunction(
+  contains = discrepancyFunction_BASE,
+  setup = function(model, discrepancyFunctionsArgs) {
+    
+    dataNames <- discrepancyFunctionsArgs[["dataNames"]]
+    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
+    latent_occ <- discrepancyFunctionsArgs[["latent_occ"]]
+    prob_detection <- discrepancyFunctionsArgs[["prob_detection"]]
+    
+  },
+  run = function() {
+    z <- values(model, latent_occ)
+    ## values 
+    p <- values(model, prob_detection)[1]
+    obs_mat <- matrix(values(model, dataNames), ncol = nVisits)
+    obs_y <- numeric(dim(obs_mat)[1])
+    for (i in 1:dim(obs_mat)[1]) {
+      obs_y[i] <- sum(obs_mat[i, ])
+    }
+    
+    # get number of sites
+    nsites <- dim(obs_mat)[1]
+    
+    chi_out <- 0
+    for (i in 1:nsites) {
+      # get y_exp
+      y_exp <- z[i] * p * nVisits
+      stat <- (obs_y[i] - y_exp) ^ 2 / (y_exp + 1e-6)
+      chi_out <- chi_out + stat
+    }
+    
+    returnType(double(0)) 
+    return(chi_out)
+  }
+)
+
 ## ratio discrepancy function
 ratioDiscFunction <- nimbleFunction(
   contains = discrepancyFunction_BASE,

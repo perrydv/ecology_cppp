@@ -65,8 +65,9 @@ simulate_cov_occ_inter <- function(params, x_site, nSites, nVisits) {
   
   for (i in 1:nSites) {
     
-    psi[i] <- plogis(params$beta[1] + params$beta[2] * x_site[i, 1] +
-                       params$beta[3] * x_site[i, 1] * x_site[i, 2])
+    psi[i] <- plogis(params$beta[1] * x_site[i, 1] + 
+                       params$beta[2] * x_site[i, 2] +
+                       params$beta[3] * x_site[i, 2] * x_site[i, 3])
     
     z[i] <- rbinom(1, 1, psi[i])
     

@@ -408,9 +408,7 @@ runCalibration_sim <- function(model, ## name of the uncompiled nimbleModel
                                origMCMCSamples, ## originalMCMC samples
                                cModelCalcDisc, cMcmc, cSetAndSimPP,
                                nCalibrationReplicates,
-                               MCMCcontrol = list(niter = 500,
-                                                  thin = 1,
-                                                  nburnin = 0),
+                               MCMCcontrol,
                                returnSamples = TRUE,                            
                                returnDiscrepancies = TRUE,
                                calcDisc = TRUE, 
@@ -543,7 +541,7 @@ runCalibration_sim <- function(model, ## name of the uncompiled nimbleModel
       ## 4) calculate PPP
       if (calcDisc) {
         thisResult$PPP <- try(calculatePPP(
-          MCMCSamples = replicatedMCMCsamples,
+          MCMCSamples = replicatedMCMCsamples[, colnames(origMCMCSamples)],
           calcDiscrepanciesFun = cModelCalcDisc,
           returnDiscrepancies = returnDiscrepancies
         )

@@ -122,14 +122,14 @@ saveRDS(all_data, "occupancy/saved_outputs/output_betabin.rds")
 ########################################
 
 # data size
-nSites <- 50
+nSites <- 100
 nVisits <- 6
 nDatasets <- 100
 
 # parameter values
-p <- 0.1
+p <- 0.6
 beta <- c(0, 0.5)
-beta2 <- c(0, 1, 3, 5)
+beta2 <- c(0, 3, 7, 9)
 
 # MCMC 
 niter <- 5000
@@ -184,7 +184,6 @@ param_indices_list <- list(
   1:(length(beta) + 1) # not conditioned on latent state
 )
 
-# discrepancy functions and arguments
 discrepancyFunctions <- list(chisqDiscFunction_z_cov, tukeyDiscFunction_z_cov)
 discrepancyNames <- c("Chi-Square", "Freeman-Tukey")
 args <- list(y = "y", x_site = "x_site", nVisits = nVisits,
@@ -211,7 +210,10 @@ sitecov_out <- run_cppp_simulations(
   init_args = list(ncov = constants$ncov),
   nDatasets, niter, nburnin, thin,
   nCalibrationReplicates,
-  condition_on_latent_states = FALSE
+  condition_on_latent_states = FALSE,
+  MCMCcontrol = list(niter = 5000,
+                     thin = 10,
+                     nburnin = 400)
 ) 
 
 # add new column to output

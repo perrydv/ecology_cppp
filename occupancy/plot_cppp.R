@@ -42,6 +42,10 @@ get_cppp_plot(plot_type = "dot_coverage", all_data, param = "p",
 # read in data
 all_data <- readRDS("occupancy/saved_outputs/output_sitecov.rds")
 
+# print one plot
+get_cppp_plot(plot_type = "dot_coverage", all_data, param = "all_param",
+              breakage_axis_name = "beta2", cdtn = FALSE, print = TRUE)
+
 # save all plots
 get_cppp_plot(plot_type = c("density", "dot_coverage", "dot_bias", "power"), 
               all_data,
