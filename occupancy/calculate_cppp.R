@@ -16,105 +16,105 @@ source("occupancy/occupancy_discrepancy_functions.R")
 
 # load auxiliary functions
 source("utils.R")
-
-
-#################
-# beta-binomial #
-#################
-
-# data size
-nSites <- 50
-nVisits <- 6
-nDatasets <- 100
-
-# parameter values
-p <- 0.3
-rho <- c(0.01, 0.1, 0.25, 0.5)
-psi <- 0.6
-
-# MCMC
-niter <- 5000
-nburnin <- 1000
-thin <- 5
-nCalibrationReplicates <- 100
-
-# simulate data
-simulated_y <- array(NA, dim = c(nDatasets, length(rho), nSites))
-for (n in seq_along(1:nDatasets)) {
-  for (i in seq_along(rho)) {
-    # simulate data
-    simulated_y[n, i, ] <- simulate_betabinomial(
-      params = list(psi = psi, p = p),
-      nSites, nVisits, rho[i]
-    )
-  }
-}
-
-##
-# cppp function inputs
-##
-# model constants
-constants <- list(nSites = nSites, nVisits = nVisits)
-
-# uncompiled model - temporarily add data so that the MCMC samplers get set up
-model_uncompiled <- nimbleModel(model_minimal, constants = constants,
-                                data = list(y = simulated_y[1, 1, ]))
-
-# param names to monitor in MCMC
-mcmc_monitors <- c("psi", "p", "z")
-
-# axis of model breakage
-breakage_axis <- rho
-
-# lists of data names, param names, and param indices
-data_name_list <- list(
-  "y", # conditioned on latent state
-  c("y", "z") # not conditioned on latent state
-)
-param_name_list <- list(
-  c("p", "psi", "z"), # conditioned on latent state
-  c("p", "psi") # not conditioned on latent state
-)
-param_indices_list <- list(
-  1:(nSites + 2), # conditioned on latent state
-  1:2 # not conditioned on latent state
-)
-
-# discrepancy functions and arguments
-discrepancyFunctions <- list(ratioDiscFunction, devianceDiscFunction,
-                             chisqDiscFunction, tukeyDiscFunction)
-discrepancyNames <- c("Ratio", "Deviance", "Chi-Square", "Freeman-Tukey")
-args <- list(nVisits = nVisits, dataNames = "y",
-             latent_occ = "z", prob_detection = "p", prob_occupancy = "psi")
-discrepancyFunctionsArgs <- list(args, args, args, args)
-
-# named list of param calculating coverage: values = true param values
-coverage_params <- c(psi, p)
-names(coverage_params) <- c("psi", "p")
-
-# function to generate initial values for MCMC
-init_function_betabin <- function(simulated_data, args) {
-  list(psi = runif(1, 0, 1), p = runif(1, 0, 1),
-       z = pmin(simulated_data[[1]], 1))
-}
-
-# run cppp simulations
-betabin_out <- run_cppp_simulations(
-  constants, simulated_data = list(simulated_y),
-  sim_data_names = "y", model_uncompiled, mcmc_monitors,
-  breakage_axis, data_name_list,  param_name_list,  param_indices_list,
-  discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
-  coverage_params, init_function = init_function_betabin,
-  init_args = list(),
-  nDatasets, niter, nburnin, thin,
-  nCalibrationReplicates,
-  condition_on_latent_states = c(TRUE, FALSE)
-)
-
-# add new column to output
-all_data <- betabin_out %>%
-  mutate(all_param = ifelse(psi & p, TRUE, FALSE))
-saveRDS(all_data, "occupancy/saved_outputs/output_betabin.rds")
+# 
+# 
+# #################
+# # beta-binomial #
+# #################
+# 
+# # data size
+# nSites <- 50
+# nVisits <- 6
+# nDatasets <- 100
+# 
+# # parameter values
+# p <- 0.3
+# rho <- c(0.01, 0.1, 0.25, 0.5)
+# psi <- 0.6
+# 
+# # MCMC
+# niter <- 5000
+# nburnin <- 1000
+# thin <- 5
+# nCalibrationReplicates <- 100
+# 
+# # simulate data
+# simulated_y <- array(NA, dim = c(nDatasets, length(rho), nSites))
+# for (n in seq_along(1:nDatasets)) {
+#   for (i in seq_along(rho)) {
+#     # simulate data
+#     simulated_y[n, i, ] <- simulate_betabinomial(
+#       params = list(psi = psi, p = p),
+#       nSites, nVisits, rho[i]
+#     )
+#   }
+# }
+# 
+# ##
+# # cppp function inputs
+# ##
+# # model constants
+# constants <- list(nSites = nSites, nVisits = nVisits)
+# 
+# # uncompiled model - temporarily add data so that the MCMC samplers get set up
+# model_uncompiled <- nimbleModel(model_minimal, constants = constants,
+#                                 data = list(y = simulated_y[1, 1, ]))
+# 
+# # param names to monitor in MCMC
+# mcmc_monitors <- c("psi", "p", "z")
+# 
+# # axis of model breakage
+# breakage_axis <- rho
+# 
+# # lists of data names, param names, and param indices
+# data_name_list <- list(
+#   "y", # conditioned on latent state
+#   c("y", "z") # not conditioned on latent state
+# )
+# param_name_list <- list(
+#   c("p", "psi", "z"), # conditioned on latent state
+#   c("p", "psi") # not conditioned on latent state
+# )
+# param_indices_list <- list(
+#   1:(nSites + 2), # conditioned on latent state
+#   1:2 # not conditioned on latent state
+# )
+# 
+# # discrepancy functions and arguments
+# discrepancyFunctions <- list(ratioDiscFunction, devianceDiscFunction,
+#                              chisqDiscFunction, tukeyDiscFunction)
+# discrepancyNames <- c("Ratio", "Deviance", "Chi-Square", "Freeman-Tukey")
+# args <- list(nVisits = nVisits, dataNames = "y",
+#              latent_occ = "z", prob_detection = "p", prob_occupancy = "psi")
+# discrepancyFunctionsArgs <- list(args, args, args, args)
+# 
+# # named list of param calculating coverage: values = true param values
+# coverage_params <- c(psi, p)
+# names(coverage_params) <- c("psi", "p")
+# 
+# # function to generate initial values for MCMC
+# init_function_betabin <- function(simulated_data, args) {
+#   list(psi = runif(1, 0, 1), p = runif(1, 0, 1),
+#        z = pmin(simulated_data[[1]], 1))
+# }
+# 
+# # run cppp simulations
+# betabin_out <- run_cppp_simulations(
+#   constants, simulated_data = list(simulated_y),
+#   sim_data_names = "y", model_uncompiled, mcmc_monitors,
+#   breakage_axis, data_name_list,  param_name_list,  param_indices_list,
+#   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
+#   coverage_params, init_function = init_function_betabin,
+#   init_args = list(),
+#   nDatasets, niter, nburnin, thin,
+#   nCalibrationReplicates,
+#   condition_on_latent_states = c(TRUE, FALSE)
+# )
+# 
+# # add new column to output
+# all_data <- betabin_out %>%
+#   mutate(all_param = ifelse(psi & p, TRUE, FALSE))
+# saveRDS(all_data, "occupancy/saved_outputs/output_betabin.rds")
 
 
 ########################################
@@ -129,7 +129,7 @@ nDatasets <- 100
 # parameter values
 p <- 0.6
 beta <- c(0, 0.5)
-beta2 <- c(0, 3, 7, 9)
+beta2 <- c(0, 3, 10, 50)
 
 # MCMC 
 niter <- 5000

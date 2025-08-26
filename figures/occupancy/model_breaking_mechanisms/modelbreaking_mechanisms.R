@@ -2,11 +2,11 @@ library(tidyverse)
 library(patchwork)
 
 # occupancy covariate interaction
-x1 <- rnorm(100)
-x2 <- rnorm(100)
+x1 <- rnorm(1000)
+x2 <- rnorm(1000)
 beta0 <- 0
 beta1 <- 0.5
-beta2 <- c(1, 3, 5)
+beta2 <- c(0, 3, 10, 50)
 psi_null <- data.frame(psi = plogis(beta0 + beta1 * x1)) %>% 
   mutate(hyp = "null")
 psi_alt1 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
@@ -18,34 +18,48 @@ psi_alt2 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 +
 psi_alt3 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
                                             beta2[3] * x1 * x2)) %>% 
                     mutate(hyp = "alt"), psi_null)
+psi_alt4 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
+                                            beta2[4] * x1 * x2)) %>% 
+                    mutate(hyp = "alt"), psi_null)
 
 plot_1 <- ggplot() +
   geom_density(data = psi_alt1, aes(x = psi, fill = hyp),
                alpha = 0.5) +
   labs(x = "psi", y = "count") +
-  ggtitle("beta = 1") +
+  ggtitle("beta2 = 0") +
   scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
-  theme_minimal()
+  theme_minimal() +
+  theme(legend.position = "None")
 
-plot_3 <- ggplot() +
+plot_2 <- ggplot() +
   geom_density(data = psi_alt2, aes(x = psi, fill = hyp),
                alpha = 0.5) +
   labs(x = "psi", y = "count") +
-  ggtitle("beta = 3") +
+  ggtitle("beta2 = 3") +
   scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
-  theme_minimal()
+  theme_minimal() +
+  theme(legend.position = "None")
 
-plot_5 <- ggplot() +
+plot_3 <- ggplot() +
   geom_density(data = psi_alt3, aes(x = psi, fill = hyp),
                alpha = 0.5) +
   labs(x = "psi", y = "count") +
-  ggtitle("beta = 5") +
+  ggtitle("beta2 = 10") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_4 <- ggplot() +
+  geom_density(data = psi_alt4, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("beta2 = 50") +
   scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
   theme_minimal()
 
-final_inter_plot <- plot_1 + plot_3 + plot_5 + plot_layout(nrow = 1)
-ggsave("figures/model_breaking_mechanisms/modelbreak_interaction.png", 
-       dpi = 400, width = 7, height = 3)
+final_inter_plot <- plot_1 + plot_2 + plot_3 + plot_4 +  plot_layout(nrow = 1)
+ggsave("figures/occupancy/model_breaking_mechanisms/modelbreak_interaction.png", 
+       dpi = 400, width = 9, height = 3)
 
 
 # non independent sites
