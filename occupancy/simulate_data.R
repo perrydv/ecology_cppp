@@ -79,6 +79,35 @@ simulate_cov_occ_inter <- function(params, x_site, nSites, nVisits) {
   
 } 
 
+### Model 2c - non-linear occupancy covariates ###
+
+# params requires 2 values 
+#   1. beta - covariate coefficients on occupancy
+#   2. p - detection probability
+# x_site is the site-level covariate data
+simulate_cov_occ_nonlin <- function(params, x_site, nSites, nVisits) {
+  
+  y <- matrix(NA, nrow = nSites, ncol = nVisits)
+  
+  psi <- rep(NA, nSites)
+  
+  z <- rep(NA, nSites)
+  
+  
+  for (i in 1:nSites) {
+    
+    psi[i] <- plogis(params$beta %*% x_site[i, ])
+    
+    z[i] <- rbinom(1, 1, psi[i] ^ 2)
+    
+    y[i, ] <- rbinom(nVisits, 1, z[i] * params$p)
+    
+  }
+  
+  return(y)
+  
+} 
+
 ### Model 3 - occupancy & detection covariates ###
 
 # params requires 2 values 

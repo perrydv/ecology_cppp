@@ -26,7 +26,7 @@ calcDiscrepancies <- nimbleFunction(
   setup = function(model,
                    dataNames,
                    paramNames,
-                   paramIndices,
+                   #paramIndices,
                    simNodes,
                    discrepancyFunctions, # Could be one nimbleFunction or list
                    discrepancyFunctionsArgs) {
@@ -90,7 +90,8 @@ calcDiscrepancies <- nimbleFunction(
 
     for (i in 1:nSamples){
       ## put MCMC values from sampled iteration in the model
-      values(model, paramNodes) <<- MCMCOutput[i, paramIndices]
+      # values(model, paramNodes) <<- MCMCOutput[i, paramIndices]
+      values(model, paramNodes) <<- MCMCOutput[i, ]
       
       ## calculate 
       model$calculate(paramDependencies)

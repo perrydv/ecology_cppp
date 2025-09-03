@@ -11,7 +11,7 @@ run_cppp_simulations <- function(
   breakage_axis, # vector
   data_name_list, # conditioned vs. not conditioned
   param_name_list, # conditioned vs. not conditioned
-  param_indices_list, # conditioned vs. not conditioned
+  # param_indices_list, # conditioned vs. not conditioned
   discrepancyFunctions,
   discrepancyNames,
   discrepancyFunctionsArgs,
@@ -54,7 +54,7 @@ run_cppp_simulations <- function(
       # if conditioning on latent state
       dataNames <- data_name_list[[j]]
       paramNames <- model$expandNodeNames(param_name_list[[j]])
-      paramIndices <- param_indices_list[[j]]
+      # paramIndices <- param_indices_list[[j]]
       simNodes <- unique(c(model$expandNodeNames(dataNames),
                            model$getDependencies(paramNames,
                                                  includeData = FALSE,
@@ -83,7 +83,7 @@ run_cppp_simulations <- function(
       # if *not* conditioning on latent state
       dataNames <- data_name_list[[j]]
       paramNames <- model$expandNodeNames(param_name_list[[j]])
-      paramIndices <- param_indices_list[[j]]
+      # paramIndices <- param_indices_list[[j]]
       simNodes <- unique(c(model$expandNodeNames(dataNames), 
                            model$getDependencies(paramNames, 
                                                  includeData = FALSE, 
@@ -114,7 +114,7 @@ run_cppp_simulations <- function(
     modelCalcDisc <- calcDiscrepancies(model = model_uncompiled, 
                                        dataNames = dataNames,
                                        paramNames = paramNames,
-                                       paramIndices = paramIndices,
+                                       #paramIndices = paramIndices,
                                        simNodes = simNodes,
                                        discrepancyFunctions = 
                                          discrepancyFunctions,

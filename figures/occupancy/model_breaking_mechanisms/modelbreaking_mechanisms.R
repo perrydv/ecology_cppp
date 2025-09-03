@@ -62,6 +62,51 @@ ggsave("figures/occupancy/model_breaking_mechanisms/modelbreak_interaction.png",
        dpi = 400, width = 9, height = 3)
 
 
+# occupancy covariate nonlinear
+x1 <- rnorm(1000)
+beta1 <- 0.1
+beta2 <- c(0, 3, 10, 50)
+psi_null <- data.frame(psi = plogis(beta1 + beta2[1] * x1)) %>% 
+  mutate(hyp = "null")
+psi_alt1 <- rbind(data.frame(psi = plogis(beta1 + beta2[2] * x1) ^ 2) %>% 
+                    mutate(hyp = "alt"), psi_null)
+psi_alt2 <- rbind(data.frame(psi = plogis(beta1 + beta2[3] * x1) ^ 2) %>% 
+                    mutate(hyp = "alt"), psi_null)
+psi_alt3 <- rbind(data.frame(psi = plogis(beta1 + beta2[4] * x1) ^ 2) %>% 
+                    mutate(hyp = "alt"), psi_null)
+
+plot_1 <- ggplot() +
+  geom_density(data = psi_alt1, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("beta2 = 0") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_2 <- ggplot() +
+  geom_density(data = psi_alt2, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("beta2 = 3") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_3 <- ggplot() +
+  geom_density(data = psi_alt3, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("beta2 = 10") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+final_nonlinear_plot <- plot_1 + plot_2 + plot_3 + plot_layout(nrow = 1)
+ggsave("figures/occupancy/model_breaking_mechanisms/modelbreak_nonlinear.png", 
+       dpi = 400, width = 9, height = 3)
+
+
 # non independent sites
 psi <- 0.6
 
