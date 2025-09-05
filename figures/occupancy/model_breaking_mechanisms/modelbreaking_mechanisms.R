@@ -7,22 +7,32 @@ x2 <- rnorm(1000)
 beta0 <- 0
 beta1 <- 0.5
 beta2 <- c(0, 3, 10, 50)
+
 psi_null <- data.frame(psi = plogis(beta0 + beta1 * x1)) %>% 
   mutate(hyp = "null")
-psi_alt1 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
-                                            beta2[1] * x1 * x2)) %>% 
-                    mutate(hyp = "alt"), psi_null)
-psi_alt2 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
-                                            beta2[2] * x1 * x2)) %>% 
-                    mutate(hyp = "alt"), psi_null)
-psi_alt3 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
-                                            beta2[3] * x1 * x2)) %>% 
-                    mutate(hyp = "alt"), psi_null)
-psi_alt4 <- rbind(data.frame(psi = plogis(beta0 + beta1 * x1 + 
-                                            beta2[4] * x1 * x2)) %>% 
-                    mutate(hyp = "alt"), psi_null)
+psi_null$z <- sapply(psi_null$psi, function(x) rbinom(1, 1, x))
+psi_alt1 <- data.frame(psi = plogis(beta0 + beta1 * x1 + 
+                                      beta2[1] * x1 * x2)) %>% 
+  mutate(hyp = "alt")
+psi_alt1$z <- sapply(psi_alt1$psi, function(x) rbinom(1, 1, x))
+psi_alt1 <- rbind(psi_alt1, psi_null)
+psi_alt2 <- data.frame(psi = plogis(beta0 + beta1 * x1 + 
+                                      beta2[2] * x1 * x2)) %>% 
+  mutate(hyp = "alt")
+psi_alt2$z <- sapply(psi_alt2$psi, function(x) rbinom(1, 1, x))
+psi_alt2 <- rbind(psi_alt2, psi_null)
+psi_alt3 <- data.frame(psi = plogis(beta0 + beta1 * x1 + 
+                                      beta2[3] * x1 * x2)) %>% 
+  mutate(hyp = "alt")
+psi_alt3$z <- sapply(psi_alt3$psi, function(x) rbinom(1, 1, x))
+psi_alt3 <- rbind(psi_alt3, psi_null)
+psi_alt4 <- data.frame(psi = plogis(beta0 + beta1 * x1 + 
+                                      beta2[1] * x1 * x2)) %>% 
+  mutate(hyp = "alt")
+psi_alt4$z <- sapply(psi_alt4$psi, function(x) rbinom(1, 1, x))
+psi_alt4 <- rbind(psi_alt4, psi_null)
 
-plot_1 <- ggplot() +
+plot_1_psi <- ggplot() +
   geom_density(data = psi_alt1, aes(x = psi, fill = hyp),
                alpha = 0.5) +
   labs(x = "psi", y = "count") +
@@ -31,7 +41,7 @@ plot_1 <- ggplot() +
   theme_minimal() +
   theme(legend.position = "None")
 
-plot_2 <- ggplot() +
+plot_2_psi <- ggplot() +
   geom_density(data = psi_alt2, aes(x = psi, fill = hyp),
                alpha = 0.5) +
   labs(x = "psi", y = "count") +
@@ -40,7 +50,7 @@ plot_2 <- ggplot() +
   theme_minimal() +
   theme(legend.position = "None")
 
-plot_3 <- ggplot() +
+plot_3_psi <- ggplot() +
   geom_density(data = psi_alt3, aes(x = psi, fill = hyp),
                alpha = 0.5) +
   labs(x = "psi", y = "count") +
@@ -49,7 +59,7 @@ plot_3 <- ggplot() +
   theme_minimal() +
   theme(legend.position = "None")
 
-plot_4 <- ggplot() +
+plot_4_psi <- ggplot() +
   geom_density(data = psi_alt4, aes(x = psi, fill = hyp),
                alpha = 0.5) +
   labs(x = "psi", y = "count") +
@@ -57,8 +67,159 @@ plot_4 <- ggplot() +
   scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
   theme_minimal()
 
-final_inter_plot <- plot_1 + plot_2 + plot_3 + plot_4 +  plot_layout(nrow = 1)
-ggsave("figures/occupancy/model_breaking_mechanisms/modelbreak_interaction.png", 
+final_inter_plot_psi <- plot_1_psi + plot_2_psi + plot_3_psi + plot_4_psi +  
+  plot_layout(nrow = 1)
+ggsave("figures/occupancy/model_breaking_mechanisms/modelbreak_interaction_psi.png", 
+       final_inter_plot_psi,
+       dpi = 400, width = 9, height = 3)
+
+plot_1_z <- ggplot() +
+  geom_density(data = psi_alt1, aes(x = z, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "z", y = "count") +
+  ggtitle("beta2 = 0") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_2_z <- ggplot() +
+  geom_density(data = psi_alt2, aes(x = z, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "z", y = "count") +
+  ggtitle("beta2 = 3") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_3_z <- ggplot() +
+  geom_density(data = psi_alt3, aes(x = z, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "z", y = "count") +
+  ggtitle("beta2 = 10") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_4_z <- ggplot() +
+  geom_density(data = psi_alt4, aes(x = z, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "z", y = "count") +
+  ggtitle("beta2 = 50") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal()
+
+final_inter_plot_z <- plot_1_z + plot_2_z + plot_3_z + plot_4_z +  
+  plot_layout(nrow = 1)
+ggsave("figures/occupancy/model_breaking_mechanisms/modelbreak_interaction_z.png", 
+       final_inter_plot_z,
+       dpi = 400, width = 9, height = 3)
+
+# nonlinear occupancy
+x1 <- rnorm(1000)
+x2 <- rnorm(1000)
+beta0 <- 0
+beta1 <- 0.5
+exp <- c(1, 2, 3, 4)
+psi_null <- data.frame(psi = plogis(beta0 + beta1 * x1)) %>% 
+  mutate(hyp = "null")
+psi_null$z <- sapply(psi_null$psi, function(x) rbinom(1, 1, x))
+psi_alt1 <- data.frame(psi = plogis(beta0 + beta1 * x1) ^ exp[1]) %>% 
+                    mutate(hyp = "alt")
+psi_alt1$z <- sapply(psi_alt1$psi, function(x) rbinom(1, 1, x))
+psi_alt1 <- rbind(psi_alt1, psi_null)
+psi_alt2 <- data.frame(psi = plogis(beta0 + beta1 * x1) ^ exp[2]) %>% 
+                    mutate(hyp = "alt")
+psi_alt2$z <- sapply(psi_alt2$psi, function(x) rbinom(1, 1, x))
+psi_alt2 <- rbind(psi_alt2, psi_null)
+psi_alt3 <- data.frame(psi = plogis(beta0 + beta1 * x1) ^ exp[3]) %>% 
+                    mutate(hyp = "alt")
+psi_alt3$z <- sapply(psi_alt3$psi, function(x) rbinom(1, 1, x))
+psi_alt3 <- rbind(psi_alt3, psi_null)
+psi_alt4 <- data.frame(psi = plogis(beta0 + beta1 * x1) ^ exp[4]) %>% 
+                    mutate(hyp = "alt")
+psi_alt4$z <- sapply(psi_alt4$psi, function(x) rbinom(1, 1, x))
+psi_alt4 <- rbind(psi_alt4, psi_null)
+
+plot_1_psi <- ggplot() +
+  geom_density(data = psi_alt1, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("exp = 1") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_2_psi <- ggplot() +
+  geom_density(data = psi_alt2, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("exp = 2") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_3_psi <- ggplot() +
+  geom_density(data = psi_alt3, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("exp = 3") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_4_psi <- ggplot() +
+  geom_density(data = psi_alt4, aes(x = psi, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "psi", y = "count") +
+  ggtitle("exp = 4") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal()
+
+final_exp_plot_psi <- plot_1_psi + plot_2_psi + plot_3_psi + plot_4_psi +  
+  plot_layout(nrow = 1)
+ggsave("figures/occupancy/model_breaking_mechanisms/modelbreak_exp_psi.png", 
+       final_exp_plot_psi,
+       dpi = 400, width = 9, height = 3)
+
+plot_1_z <- ggplot() +
+  geom_density(data = psi_alt1, aes(x = z, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "z", y = "count") +
+  ggtitle("exp = 1") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_2_z <- ggplot() +
+  geom_density(data = psi_alt2, aes(x = z, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "z", y = "count") +
+  ggtitle("exp = 2") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_3_z <- ggplot() +
+  geom_density(data = psi_alt3, aes(x = z, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "z", y = "count") +
+  ggtitle("exp = 3") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal() +
+  theme(legend.position = "None")
+
+plot_4_z <- ggplot() +
+  geom_density(data = psi_alt4, aes(x = z, fill = hyp),
+               alpha = 0.5) +
+  labs(x = "z", y = "count") +
+  ggtitle("exp = 4") +
+  scale_x_continuous(limits = c(0, 1), breaks = c(0, 0.5, 1)) +
+  theme_minimal()
+
+final_exp_plot_z <- plot_1_z + plot_2_z + plot_3_z + plot_4_z +  
+  plot_layout(nrow = 1)
+ggsave("figures/occupancy/model_breaking_mechanisms/modelbreak_exp_z.png", 
+       final_exp_plot_z,
        dpi = 400, width = 9, height = 3)
 
 

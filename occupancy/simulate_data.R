@@ -98,7 +98,7 @@ simulate_cov_occ_nonlin <- function(params, x_site, nSites, nVisits) {
     
     psi[i] <- plogis(params$beta %*% x_site[i, ])
     
-    z[i] <- rbinom(1, 1, psi[i] ^ 2)
+    z[i] <- rbinom(1, 1, psi[i] ^ params$exp)
     
     y[i, ] <- rbinom(nVisits, 1, z[i] * params$p)
     
