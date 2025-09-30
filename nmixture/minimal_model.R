@@ -1,12 +1,12 @@
 # 1. basic n-mixture model
 model_minimal_nmixture <- nimbleCode({
   
-  lambda ~ dunif(0, 1000)
+  mu ~ dunif(0, 10000)
   p ~ dbeta(1, 1)
   
   for (i in 1:nSites) {
     
-    N[i] ~ dpois(lambda) 
+    N[i] ~ dpois(mu / p) 
     
     for (j in 1:nVisits) {
       

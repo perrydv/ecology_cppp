@@ -45,7 +45,7 @@ chisqDiscFunction_sitecov <- nimbleFunction(
   contains = discrepancyFunction_BASE,
   setup = function(model, discrepancyFunctionsArgs) {
     
-    dataNames <- discrepancyFunctionsArgs[["dataNames"]]
+    y <- discrepancyFunctionsArgs[["y"]]
     nVisits <- discrepancyFunctionsArgs[["nVisits"]]
     latent_occ <- discrepancyFunctionsArgs[["latent_occ"]]
     prob_detection <- discrepancyFunctionsArgs[["prob_detection"]]
@@ -55,7 +55,7 @@ chisqDiscFunction_sitecov <- nimbleFunction(
     z <- values(model, latent_occ)
     ## values 
     p <- values(model, prob_detection)[1]
-    obs_mat <- matrix(values(model, dataNames), ncol = nVisits)
+    obs_mat <- matrix(values(model, y), ncol = nVisits)
     obs_y <- numeric(dim(obs_mat)[1])
     for (i in 1:dim(obs_mat)[1]) {
       obs_y[i] <- sum(obs_mat[i, ])

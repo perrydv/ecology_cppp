@@ -46,3 +46,59 @@ simulate_nmixture_negbin <- function(params, nSites, nVisits, r) {
 }
 
 
+### unmodeled variation in N ###
+
+# rho describes the proportion of variation in population sizes occurring 
+# among sites
+simulate_nmixture_Nvar <- function(params, nSites, nVisits, rho) {
+  
+  theta1 <- rho * params$lambda
+  theta2 <- params$lambda - theta1
+  
+  v <- rpois(nSites, lambda = theta1)
+  
+  A <- matrix(NA, nrow = nSites, ncol = nVisits)
+  N <- matrix(NA, nrow = nSites, ncol = nVisits)
+  y <- matrix(NA, nrow = nSites, ncol = nVisits)
+  
+  for (i in 1:nSites) {
+    
+    A[i, ] <- rpois(nVisits, theta2)
+    
+    N[i, ] <- A[i, ] + v[i]
+    
+    for (j in 1:nVisits) {
+      
+      y[i, j] <- rbinom(1, N[i, j], params$p)
+      
+    }
+  }
+  
+  return(y)
+}
+
+
+### double counting ###
+
+# gamma describes the probability of double counting
+simulate_nmixture_dcount <- function(params, nSites, nVisits, gamma) {
+  
+  N <- rpois(nSites, params$lambda)
+  true_count <- matrix(NA, nrow = nSites, ncol = nVisits)
+  y <- matrix(NA, nrow = nSites, ncol = nVisits)
+  
+  for (i in 1:nSites) {
+    
+    true_count[i, ] <- rbinom(nVisits, N[i], params$p)
+    
+    for (j in 1:nVisits) {
+      
+      y[i, j] <- true_count[i, j] + rbinom(1, true_count[i, j], gamma)
+      
+    }
+  }
+  
+  return(y)
+}
+
+

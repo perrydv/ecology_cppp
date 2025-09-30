@@ -49,7 +49,9 @@ run_cppp_simulations <- function(
 
   # calculate for conditioning vs. not conditioning on latent state
   for (j in seq_along(condition_on_latent_states)) {
-
+    
+    print(paste0("condition: ", j))
+    
     if (condition_on_latent_states[j]) {
       # if conditioning on latent state
       dataNames <- data_name_list[[j]]
@@ -134,8 +136,12 @@ run_cppp_simulations <- function(
     # simulate n datasets
     for (n in 1:nDatasets) {
       
+      print(paste0("dataset: ", n))
+      
       # loop through breakage axis
       for (i in seq_along(breakage_axis)) {
+        
+        print(paste0("breakage axis: ", i))
         
         simulated_data_sub <- list()
         for (a in seq_along(sim_data_names)) {
@@ -159,11 +165,13 @@ run_cppp_simulations <- function(
         # get coverage and bias
         for (p in seq_along(coverage_params)) {
           bounds <- quantile(MCMCOutput[, names(coverage_params)[p]], 
-                             c(0.025, 0.975))
+                             c(0.025, 0.975),
+                             na.rm = TRUE)
           coverage[[j]][i, n, p] <- coverage_params[p] >= bounds[1] && 
             coverage_params[p] <= bounds[2]
           bias[[j]][i, n, p] <- abs(
-            mean(MCMCOutput[, names(coverage_params)[p]]) - coverage_params[p]
+            mean(MCMCOutput[, names(coverage_params)[p]],
+                 na.rm = TRUE) - coverage_params[p]
           )
         }     
         
@@ -194,13 +202,20 @@ run_cppp_simulations <- function(
                                       returnSamples = TRUE,
                                       returnDiscrepancies = TRUE) 
         
+        print("cal done")
+        
         # add ppp
         ppp_out[[j]][i, n, ] <- out_cal$obsPPP
         
         # calculate cppp
-        for (k in seq_along(out_cal$obsPPP)) {
-          cppp_out[[j]][i, n, k] <- mean(out_cal$repPPP[k, ] <= 
-                                           out_cal$obsPPP[k])
+        if (length(out_cal$obsPPP) > 1) {
+          for (k in seq_along(out_cal$obsPPP)) {
+            cppp_out[[j]][i, n, k] <- mean(out_cal$repPPP[k, ] <= 
+                                             out_cal$obsPPP[k])
+          }
+        } else {
+          cppp_out[[j]][i, n, 1] <- mean(out_cal$repPPP <= 
+                                           out_cal$obsPPP)
         }
       }
     }

@@ -43,6 +43,42 @@ chisqDiscFunction_nmix <- nimbleFunction(
   }
 )
 
+## Link et al. discrepancy function
+linkDiscFunction_nmix <- nimbleFunction(
+  contains = discrepancyFunction_BASE,
+  setup = function(model, discrepancyFunctionsArgs) {
+    
+    dataNames <- discrepancyFunctionsArgs[["dataNames"]]
+    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
+    latent_N <- discrepancyFunctionsArgs[["latent_N"]]
+    prob_detection <- discrepancyFunctionsArgs[["prob_detection"]]
+    
+  },
+  run = function() {
+    
+    ## values
+    N <- values(model, latent_N)
+    p <- values(model, prob_detection)[1]
+    obs_y <- matrix(values(model, dataNames), ncol = nVisits)
+    
+    # get number of sites
+    nsites <- length(N)
+    
+    link_out <- 0
+    for (i in 1:nsites) {
+      # get y_exp
+      y_exp <- N[i] * p
+      for (j in 1:nVisits) {
+        stat <- (obs_y[i, j] - y_exp) ^ 2 / ((y_exp + 1e-6) * (1 - p)) 
+        link_out <- link_out + stat
+      }
+    }
+    
+    returnType(double(0)) 
+    return(link_out)
+  }
+)
+
 ## ratio discrepancy function
 ratioDiscFunction_nmix <- nimbleFunction(
   contains = discrepancyFunction_BASE,
