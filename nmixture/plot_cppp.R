@@ -12,7 +12,7 @@ source("utils.R")
 
 
 # read in data
-all_data <- readRDS("nmixture/saved_outputs/output_betabin.rds")
+all_data <- readRDS("nmixture/saved_outputs/output_unmodN.rds")
 
 # print all plots
 get_cppp_plot(plot_type = c("density", "dot_coverage", "dot_bias", "power"),
@@ -22,15 +22,15 @@ get_cppp_plot(plot_type = c("density", "dot_coverage", "dot_bias", "power"),
               print = TRUE)
 
 # save all plots
-get_cppp_plot(plot_type = c("density", "dot_coverage", "dot_bias", "power"), 
+get_cppp_plot(plot_type = c("density", "dot_coverage"), 
               all_data,
-              param = c("p", "psi", "all_param"),
+              param = c("p", "mu", "all_param"),
               breakage_axis_name = "rho", cdtn = c(TRUE, FALSE),
               print = FALSE, save = TRUE,
-              filepath = "figures/occupancy/betabin")
+              filepath = "figures/nmixture/unmodN")
 
 # print one plot
-get_cppp_plot(plot_type = "dot_coverage", all_data, param = "p",
+get_cppp_plot(plot_type = "density", all_data, param = "mu",
               breakage_axis_name = "rho", cdtn = TRUE, print = TRUE)
 
 

@@ -326,7 +326,7 @@ get_cppp_density_plot <- function(all_data, cdtn) {
                        labels = c("0", "0.5", "1")) +
     labs(x = "p-value", y = "count", fill = "") +
     ggtitle(title) +
-    geom_hline(yintercept = 0.05, linetype = 2) +
+    geom_vline(xintercept = 0.05, linetype = 2) +
     theme_minimal(base_family = "Arial")
   
   return(plot)
