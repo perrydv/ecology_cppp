@@ -12,7 +12,7 @@ source("utils.R")
 
 
 # read in data
-all_data <- readRDS("nmixture/saved_outputs/output_unmodN.rds")
+all_data <- readRDS("nmixture/saved_outputs/output_dcount_20251002.rds")
 
 # print all plots
 get_cppp_plot(plot_type = c("density", "dot_coverage", "dot_bias", "power"),

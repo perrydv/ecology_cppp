@@ -36,6 +36,7 @@ source("utils.R")
 # niter <- 5000
 # nburnin <- 1000
 # thin <- 5
+# nchain <- 1
 # nCalibrationReplicates <- 100
 # 
 # # simulate data
@@ -106,7 +107,7 @@ source("utils.R")
 #   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
 #   coverage_params, init_function = init_function_betabin,
 #   init_args = list(),
-#   nDatasets, niter, nburnin, thin,
+#   nDatasets, niter, nburnin, thin, nchain,
 #   nCalibrationReplicates,
 #   condition_on_latent_states = c(TRUE, FALSE)
 # )
@@ -135,6 +136,7 @@ source("utils.R")
 # niter <- 5000
 # nburnin <- 1000
 # thin <- 5
+# nchain <- 1
 # nCalibrationReplicates <- 100
 # 
 # # simulate data
@@ -209,7 +211,7 @@ source("utils.R")
 #   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
 #   coverage_params, init_function = init_function_sitecov,
 #   init_args = list(ncov = constants$ncov),
-#   nDatasets, niter, nburnin, thin,
+#   nDatasets, niter, nburnin, thin, nchain,
 #   nCalibrationReplicates,
 #   condition_on_latent_states = FALSE
 # )
@@ -238,6 +240,7 @@ exp <- c(1, 1.5, 2, 3)
 niter <- 5000
 nburnin <- 1000
 thin <- 5
+nchain <- 1
 nCalibrationReplicates <- 100
 
 # simulate data
@@ -311,7 +314,7 @@ site_nonlin_out <- run_cppp_simulations(
   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
   coverage_params, init_function = init_function_sitecov,
   init_args = list(ncov = constants$ncov),
-  nDatasets, niter, nburnin, thin,
+  nDatasets, niter, nburnin, thin, nchain,
   nCalibrationReplicates,
   condition_on_latent_states = FALSE
 )
@@ -341,6 +344,7 @@ saveRDS(all_data, "occupancy/saved_outputs/output_site_nonlin.rds")
 # niter <- 5000
 # nburnin <- 1000
 # thin <- 5
+# nchain <- 1
 # nCalibrationReplicates <- 100
 # 
 # # simulate data
@@ -411,7 +415,7 @@ saveRDS(all_data, "occupancy/saved_outputs/output_site_nonlin.rds")
 #   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
 #   coverage_params, init_function = init_function_betabin,
 #   init_args = list(),
-#   nDatasets, niter, nburnin, thin,
+#   nDatasets, niter, nburnin, thin, nchain,
 #   nCalibrationReplicates,
 #   condition_on_latent_states = c(TRUE, FALSE)
 # )

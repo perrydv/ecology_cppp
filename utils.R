@@ -22,6 +22,7 @@ run_cppp_simulations <- function(
   niter,
   nburnin,
   thin,
+  nchain,
   nCalibrationReplicates,
   condition_on_latent_states,
   MCMCcontrol = list(niter = 500,
@@ -159,8 +160,11 @@ run_cppp_simulations <- function(
                        init_function, init_args)
         
         # generate samples
-        MCMCOutput <- runMCMC(compiled_mcmc, niter = niter, 
-                              nburnin = nburnin, thin = thin)
+        mcmc_out <- runMCMC(compiled_mcmc, niter = niter, 
+                            nburnin = nburnin, thin = thin,
+                            nchain = nchain)
+        MCMCOutput <- do.call(rbind, mcmc_out)
+        
         
         # get coverage and bias
         for (p in seq_along(coverage_params)) {

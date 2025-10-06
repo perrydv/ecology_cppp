@@ -34,7 +34,7 @@ source("utils.R")
 # mu <- lambda * p
 # 
 # # MCMC
-# niter <- 10000
+# niter <- 50000
 # nburnin <- 2000
 # thin <- 10
 # nCalibrationReplicates <- 100
@@ -103,7 +103,7 @@ source("utils.R")
 #   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
 #   coverage_params, init_function = init_function_nmix,
 #   init_args = list(),
-#   nDatasets, niter, nburnin, thin,
+#   nDatasets, niter, nburnin, thin, nchain,
 #   nCalibrationReplicates,
 #   condition_on_latent_states = c(TRUE, FALSE)
 # )
@@ -130,7 +130,7 @@ source("utils.R")
 # mu <- lambda * p
 # 
 # # MCMC
-# niter <- 10000
+# niter <- 50000
 # nburnin <- 2000
 # thin <- 10
 # nCalibrationReplicates <- 100
@@ -199,7 +199,7 @@ source("utils.R")
 #   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
 #   coverage_params, init_function = init_function_nmix,
 #   init_args = list(),
-#   nDatasets, niter, nburnin, thin,
+#   nDatasets, niter, nburnin, thin, nchain
 #   nCalibrationReplicates,
 #   condition_on_latent_states = c(TRUE, FALSE)
 # )
@@ -221,12 +221,14 @@ nDatasets <- 100
 
 # parameter values
 p <- 0.3
-gamma <- c(0, 0.05, 0.1, 0.15)
+# gamma <- c(0, 0.05, 0.1, 0.15)
+gamma <- 0
 lambda <- 100
 mu <- lambda * p
 
 # MCMC
-niter <- 10000
+nchain <- 4
+niter <- 50000
 nburnin <- 2000
 thin <- 10
 nCalibrationReplicates <- 100
@@ -295,14 +297,18 @@ dcount_out <- run_cppp_simulations(
   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
   coverage_params, init_function = init_function_nmix,
   init_args = list(),
-  nDatasets, niter, nburnin, thin,
+  nDatasets, niter, nburnin, thin, nchain,
   nCalibrationReplicates,
-  condition_on_latent_states = c(TRUE, FALSE)
+  # condition_on_latent_states = c(TRUE, FALSE),
+  condition_on_latent_states = TRUE,
+  MCMCcontrol = list(niter = niter,
+                     thin = thin,
+                     nburnin = nburnin)
 )
 
 # add new column to output
 all_data <- dcount_out %>%
   mutate(all_param = ifelse(mu & p, TRUE, FALSE))
-saveRDS(all_data, "nmixture/saved_outputs/output_dcount.rds")
+saveRDS(all_data, "nmixture/saved_outputs/output_dcount_20251002.rds")
 
 
