@@ -217,7 +217,7 @@ source("utils.R")
 # data size
 nSites <- 100
 nVisits <- 6
-nDatasets <- 100
+nDatasets <- 20
 
 # parameter values
 p <- 0.3
@@ -231,7 +231,7 @@ nchain <- 4
 niter <- 50000
 nburnin <- 2000
 thin <- 10
-nCalibrationReplicates <- 100
+nCalibrationReplicates <- 500
 
 # simulate data
 simulated_y <- array(NA, dim = c(nDatasets, length(gamma), nSites, nVisits))
@@ -309,6 +309,6 @@ dcount_out <- run_cppp_simulations(
 # add new column to output
 all_data <- dcount_out %>%
   mutate(all_param = ifelse(mu & p, TRUE, FALSE))
-saveRDS(all_data, "nmixture/saved_outputs/output_dcount_20251002.rds")
+saveRDS(all_data, "nmixture/saved_outputs/output_dcount_20251006_5.rds")
 
 
