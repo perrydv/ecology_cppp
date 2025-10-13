@@ -309,6 +309,6 @@ dcount_out <- run_cppp_simulations(
 # add new column to output
 all_data <- dcount_out %>%
   mutate(all_param = ifelse(mu & p, TRUE, FALSE))
-saveRDS(all_data, "nmixture/saved_outputs/output_dcount_20251006_5.rds")
+saveRDS(all_data, "nmixture/saved_outputs/output_dcount_20251006_3.rds")
 
 

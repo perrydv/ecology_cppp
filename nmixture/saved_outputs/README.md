@@ -24,6 +24,8 @@ thin = 1
 
 nburnin = 0
 
+nchain = 4
+
 `output_dcount_20251002.rds` 
 
 ### Original MCMC
@@ -45,3 +47,29 @@ niter = 50000
 nburnin = 2000
 
 thin = 10
+
+nchain = 1
+
+`output_dcount_20251006.rds` 
+
+### Original MCMC
+
+nchain = 4
+
+niter = 50000
+
+nburnin = 2000
+
+thin = 10
+
+### Calibration
+
+nCalibrationReplicates = 500
+
+niter = 50000
+
+nburnin = 2000
+
+thin = 10
+
+nchain = 4
