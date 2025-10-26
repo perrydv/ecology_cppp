@@ -27,7 +27,8 @@ run_cppp_simulations <- function(
   condition_on_latent_states,
   MCMCcontrol = list(niter = 500,
                      thin = 1,
-                     nburnin = 0)
+                     nburnin = 0,
+                     nchain = 1)
 ) {
 
   # create empty list of dataframes to store ppp and cppp
@@ -200,8 +201,7 @@ run_cppp_simulations <- function(
                                       cModelCalcDisc = cModelCalcDisc,
                                       cMcmc = compiled_mcmc,
                                       cSetAndSimPP = cSetAndSimPP,
-                                      nCalibrationReplicates = 
-                                        nCalibrationReplicates,
+                                      nCalibrationReplicates,
                                       MCMCcontrol,
                                       returnSamples = TRUE,
                                       returnDiscrepancies = TRUE) 

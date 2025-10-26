@@ -14,6 +14,8 @@ nburnin = 2000
 
 thin = 10
 
+nchain = 1
+
 ### Calibration
 
 nCalibrationReplicates = 100
@@ -24,7 +26,7 @@ thin = 1
 
 nburnin = 0
 
-nchain = 4
+nchain = 1
 
 `output_dcount_20251002.rds` 
 

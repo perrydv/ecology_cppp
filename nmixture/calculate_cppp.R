@@ -1,4 +1,5 @@
 library(nimble)
+library(nimbleEcology)
 library(tidyverse)
 library(patchwork)
 
@@ -214,10 +215,114 @@ source("utils.R")
 # double counting #
 ###################
 
+# # data size
+# nSites <- 100
+# nVisits <- 6
+# nDatasets <- 20
+# 
+# # parameter values
+# p <- 0.3
+# # gamma <- c(0, 0.05, 0.1, 0.15)
+# gamma <- 0
+# lambda <- 100
+# mu <- lambda * p
+# 
+# # MCMC
+# nchain <- 4
+# niter <- 50000
+# nburnin <- 2000
+# thin <- 20
+# nCalibrationReplicates <- 500
+# 
+# # simulate data
+# simulated_y <- array(NA, dim = c(nDatasets, length(gamma), nSites, nVisits))
+# for (n in seq_along(1:nDatasets)) {
+#   for (i in seq_along(gamma)) {
+#     # simulate data
+#     simulated_y[n, i, , ] <- simulate_nmixture_dcount(
+#       params = list(lambda = lambda, p = p),
+#       nSites, nVisits, gamma[i]
+#     )
+#   }
+# }
+# 
+# ##
+# # cppp function inputs
+# ##
+# # model constants
+# constants <- list(nSites = nSites, nVisits = nVisits)
+# 
+# # uncompiled model - temporarily add data so that the MCMC samplers get set up
+# model_uncompiled <- nimbleModel(model_minimal_nmixture, constants = constants,
+#                                 data = list(y = simulated_y[1, 1, , ]))
+# 
+# # param names to monitor in MCMC
+# mcmc_monitors <- c("mu", "p", "N")
+# 
+# # axis of model breakage
+# breakage_axis <- gamma
+# 
+# # lists of data names, param names, and param indices
+# data_name_list <- list(
+#   "y", # conditioned on latent state
+#   c("y", "N") # not conditioned on latent state
+# )
+# param_name_list <- list(
+#   c("p", "mu", "N"), # conditioned on latent state
+#   c("p", "mu") # not conditioned on latent state
+# )
+# 
+# # discrepancy functions and arguments
+# discrepancyFunctions <- list(devianceDiscFunction_nmix)
+# discrepancyNames <- c("Deviance")
+# args <- list(nVisits = nVisits, dataNames = "y",
+#              latent_N = "N", prob_detection = "p")
+# # discrepancyFunctionsArgs <- list(args, args, args, args)
+# discrepancyFunctionsArgs <- list(args)
+# 
+# # named list of param calculating coverage: values = true param values
+# coverage_params <- c(mu, p)
+# names(coverage_params) <- c("mu", "p")
+# 
+# # function to generate initial values for MCMC
+# init_function_nmix <- function(simulated_data, args) {
+#   list(mu = runif(1, 10, 1000), p = runif(1, 0, 1),
+#        N = round(apply(simulated_data[[1]], 1, median)) * 15
+#        )
+# }
+# 
+# # run cppp simulations
+# dcount_out <- run_cppp_simulations(
+#   constants, simulated_data = list(simulated_y),
+#   sim_data_names = "y", model_uncompiled, mcmc_monitors,
+#   breakage_axis, data_name_list,  param_name_list,  #param_indices_list,
+#   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
+#   coverage_params, init_function = init_function_nmix,
+#   init_args = list(),
+#   nDatasets, niter, nburnin, thin, nchain,
+#   nCalibrationReplicates,
+#   # condition_on_latent_states = c(TRUE, FALSE),
+#   condition_on_latent_states = FALSE,
+#   MCMCcontrol = list(niter = niter,
+#                      thin = thin,
+#                      nburnin = nburnin,
+#                      nchain = nchain)
+# )
+# 
+# # add new column to output
+# all_data <- dcount_out %>%
+#   mutate(all_param = ifelse(mu & p, TRUE, FALSE))
+# saveRDS(all_data, "nmixture/saved_outputs/output_dcount_20251020_2.rds")
+
+
+###################################
+# double counting - nimbleEcology #
+###################################
+
 # data size
 nSites <- 100
 nVisits <- 6
-nDatasets <- 20
+nDatasets <- 10
 
 # parameter values
 p <- 0.3
@@ -230,7 +335,7 @@ mu <- lambda * p
 nchain <- 4
 niter <- 50000
 nburnin <- 2000
-thin <- 10
+thin <- 20
 nCalibrationReplicates <- 500
 
 # simulate data
@@ -252,41 +357,40 @@ for (n in seq_along(1:nDatasets)) {
 constants <- list(nSites = nSites, nVisits = nVisits)
 
 # uncompiled model - temporarily add data so that the MCMC samplers get set up
-model_uncompiled <- nimbleModel(model_minimal_nmixture, constants = constants,
+model_uncompiled <- nimbleModel(model_minimal_nmixture_NE, constants = constants,
                                 data = list(y = simulated_y[1, 1, , ]))
 
 # param names to monitor in MCMC
-mcmc_monitors <- c("mu", "p", "N")
+mcmc_monitors <- c("lambda", "p")
 
 # axis of model breakage
 breakage_axis <- gamma
 
 # lists of data names, param names, and param indices
 data_name_list <- list(
-  "y", # conditioned on latent state
-  c("y", "N") # not conditioned on latent state
+  "y"
 )
 param_name_list <- list(
-  c("p", "mu", "N"), # conditioned on latent state
-  c("p", "mu") # not conditioned on latent state
+  c("p", "lambda") # not conditioned on latent state
 )
 
 # discrepancy functions and arguments
-discrepancyFunctions <- list(linkDiscFunction_nmix)
-discrepancyNames <- c("Link")
+discrepancyFunctions <- list(devianceDiscFunction_nmix_NE)
+discrepancyNames <- c("Deviance")
 args <- list(nVisits = nVisits, dataNames = "y",
-             latent_N = "N", prob_detection = "p")
+             mean_N = "lambda", prob_detection = "p",
+             nSites = nSites)
 # discrepancyFunctionsArgs <- list(args, args, args, args)
 discrepancyFunctionsArgs <- list(args)
 
 # named list of param calculating coverage: values = true param values
-coverage_params <- c(mu, p)
-names(coverage_params) <- c("mu", "p")
+coverage_params <- c(lambda, p)
+names(coverage_params) <- c("lambda", "p")
 
 # function to generate initial values for MCMC
-init_function_nmix <- function(simulated_data, args) {
-  list(mu = runif(1, 10, 1000), p = runif(1, 0, 1),
-       N = round(apply(simulated_data[[1]], 1, median)) * 15)
+init_function_nmix_NE <- function(simulated_data, args) {
+  list(lambda = runif(1, 10, 1000), p = runif(1, 0, 1)
+  )
 }
 
 # run cppp simulations
@@ -295,7 +399,7 @@ dcount_out <- run_cppp_simulations(
   sim_data_names = "y", model_uncompiled, mcmc_monitors,
   breakage_axis, data_name_list,  param_name_list,  #param_indices_list,
   discrepancyFunctions, discrepancyNames, discrepancyFunctionsArgs,
-  coverage_params, init_function = init_function_nmix,
+  coverage_params, init_function = init_function_nmix_NE,
   init_args = list(),
   nDatasets, niter, nburnin, thin, nchain,
   nCalibrationReplicates,
@@ -303,12 +407,11 @@ dcount_out <- run_cppp_simulations(
   condition_on_latent_states = TRUE,
   MCMCcontrol = list(niter = niter,
                      thin = thin,
-                     nburnin = nburnin)
+                     nburnin = nburnin,
+                     nchain = nchain)
 )
 
 # add new column to output
 all_data <- dcount_out %>%
   mutate(all_param = ifelse(mu & p, TRUE, FALSE))
-saveRDS(all_data, "nmixture/saved_outputs/output_dcount_20251006_3.rds")
-
-
+saveRDS(all_data, "nmixture/saved_outputs/output_dcount_NE_20251020_4.rds")

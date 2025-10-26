@@ -572,3 +572,223 @@ runCalibration_sim <- function(model, ## name of the uncompiled nimbleModel
   
   return(out)
 }
+
+
+
+# run calibration for simulations that takes compiled arguments
+runCalibration_sim_par <- function(model, ## name of the uncompiled nimbleModel 
+                                   dataNames, ## names of data nodes to simulate
+                                   paramNames, ## names of parameter
+                                   origMCMCSamples, ## originalMCMC samples
+                                   cModelCalcDisc, cMcmc, cSetAndSimPP,
+                                   nCalibrationReplicates,
+                                   MCMCcontrol,
+                                   returnSamples = TRUE,                            
+                                   returnDiscrepancies = TRUE,
+                                   calcDisc = TRUE, 
+                                   parallel = FALSE, 
+                                   nCores = 1) {
+  
+  ## if dataNames is null use nodes in the model with data flag 
+  if (is.null(dataNames)) {
+    print("Defaulting `dataNames` to model nodes flagged as data.")
+    dataNames <- model$getNodeNames(dataOnly = TRUE)
+  } 
+  
+  ## check that dataNames are in the model and are stochastics
+  testDataNames <- all(model$expandNodeNames(dataNames) %in% 
+                         model$getNodeNames(stochOnly = TRUE))
+  if (testDataNames == FALSE) {
+    stop(paste("dataNames", dataNames,
+               "is not the name a stochastic node in the model."))
+  }
+  
+  
+  if (is.null(origMCMCSamples)) {
+    stop(paste("provide origMCMCSamples."))
+  }
+  
+  ## if paramNames is null use columns of originMCMCSamples (must be provided) 
+  if (is.null(paramNames)) {
+    print("Defaulting `paramNames` to `origMCMCMSamples' column names")
+    paramNames <- colnames(origMCMCSamples)
+  } 
+  
+  ## check that paramNames are in the model and are stochastics
+  testParamNames <- all(model$expandNodeNames(paramNames) %in%
+                          model$getNodeNames())
+  if (testParamNames == FALSE) {
+    stop(paste("paramNames are not node names in", model, "."))
+  }
+  
+  ## Make sure origMCMCsamples contains only samples for nodes in paramNames
+  origMCMCSamples <- origMCMCSamples[, model$expandNodeNames(paramNames)]
+  
+  ## number of calibration replicates (to estimate ppp null distribution)
+  if (is.null(nCalibrationReplicates)) {
+    nCalibrationReplicates <- 100
+    print(paste("Defaulting to ", nCalibrationReplicates, 
+                " simulated PPP values."))
+  }
+  
+  ## Default MCMC settings for ppp calculation
+  niter <- ifelse(is.null(MCMCcontrol$niter), 200, MCMCcontrol$niter)
+  thin <- ifelse(is.null(MCMCcontrol$thin), 1, MCMCcontrol$thin)
+  nburnin <- ifelse(is.null(MCMCcontrol$nburnin), 0, MCMCcontrol$nburnin)
+  nchain <- ifelse(is.null(MCMCcontrol$nchain), 1, MCMCcontrol$nchain)
+  
+  
+  # SP: check if model is compiled
+  if (is(model$CobjectInterface, "uninitializedField")) { 
+    compileNimble(model)
+  }
+  
+  
+  ## check for parallel computation
+  if (parallel) {
+    libError <-  try(library("parallel"), silent = TRUE)
+    if (inherits(libError, "try-error") && nCores > 1) {
+      warning(paste0("The 'parallel' package must be installed to use ",
+                     "multiple cores for CPPP calculation. Defaulting to ",
+                     "one core."))
+      parallel <- FALSE
+      nCores <- 1
+    }   
+  }
+  
+  
+  ##------------------------------------------------------------##
+  ## Get discrepancies/PPP from original MCMC samples
+  ##------------------------------------------------------------##
+  simNodes <- unique(c(model$expandNodeNames(dataNames), 
+                       model$getDependencies(paramNames, includeData = FALSE, 
+                                             self = FALSE)))
+  
+  
+  originalOutput <- calculatePPP(MCMCSamples = origMCMCSamples,
+                                 calcDiscrepanciesFun = cModelCalcDisc, 
+                                 returnDiscrepancies = returnDiscrepancies)
+  
+  observedPPP <- originalOutput$PPP
+  if (returnDiscrepancies) {
+    observedDiscrepancies <- originalOutput$discrepancies
+  } 
+  
+  ##------------------------------------------------------------##
+  ## Set up calibration replicates
+  ##------------------------------------------------------------##
+  
+  ## if nCalibrationReplicates is less than nrow(origMCMCSamples), 
+  ## we want to evenly space or randomly choose rows
+  rowsToUse <- floor(seq(1, nrow(origMCMCSamples), 
+                         length = nCalibrationReplicates))
+  resultsList <- vector(mode = "list", length = nCalibrationReplicates)
+  
+  # run calibrations
+  cl <- makeCluster(nCores)
+  start <- Sys.time()
+  clusterExport(cl, varlist = c(
+    # "rowsToUse", "origMCMCSamples", 
+    # "cMcmc", "cSetAndSimPP", "cModelCalcDisc",
+    # "niter", "nburnin", "thin", "nchain", 
+    # "returnSamples", "calcDisc", "returnDiscrepancies", "calculatePPP",
+    "run_one_replicate"
+  ))
+  Sys.time() - start
+  
+  # resultsList_parallel <- parLapply(
+  #   cl = cl, 
+  #   X = 1:nCalibrationReplicates, 
+  #   fun = run_one_replicate
+  # )
+  resultsList_parallel <- clusterApply(
+    cl = cl,
+    x = 1:nCalibrationReplicates, # The loop index sequence
+    fun = run_one_replicate,
+    # === Pass all constants here ===
+    rowsToUse = rowsToUse,
+    origMCMCSamples = origMCMCSamples,
+    cMcmc = cMcmc,
+    cSetAndSimPP = cSetAndSimPP,
+    cModelCalcDisc = cModelCalcDisc,
+    niter = niter,
+    nburnin = nburnin,
+    thin = thin,
+    nchain = nchain,
+    returnSamples = returnSamples,
+    calcDisc = calcDisc,
+    returnDiscrepancies = returnDiscrepancies
+  )
+  
+  # stop the cluster
+  stopCluster(cl)
+  
+  out <- list()
+  
+  out$obsPPP <- observedPPP 
+  out$repPPP <- sapply(resultsList_parallel, function(x) x$PPP$PPP)
+  
+  if (returnDiscrepancies) {
+    
+    out$obsDisc <- observedDiscrepancies
+    out$repDisc <- sapply(resultsList_parallel, function(x) x$PPP$discrepancies, 
+                          simplify = FALSE)
+  }
+  
+  if (returnSamples) {
+    out$replicatedMCMCSamples <- sapply(resultsList_parallel, 
+                                        function(x) x$samples, simplify = FALSE)
+  }
+  
+  return(out)
+}
+
+
+# function for running one replicate
+run_one_replicate <- function(r, rowsToUse, origMCMCSamples, 
+                              cMcmc, cSetAndSimPP, cModelCalcDisc,
+                              niter, nburnin, thin, nchain, 
+                              returnSamples, calcDisc, returnDiscrepancies
+                              ) {
+  
+  # Extract the specific row index for this replicate
+  current_row_index <- rowsToUse[r] 
+  
+  thisResult <- list(samples = NULL, PPP = NULL)
+  ok <- TRUE
+  
+  ## 1) Set values in model and simulate data
+  # Use the explicit arguments instead of global objects
+  check <- try(cSetAndSimPP$run(origMCMCSamples[current_row_index, ])) 
+  if (inherits(check, "try-error")) {
+    warning(paste0("problem setting samples from row ", current_row_index))
+    ok <- FALSE
+  }
+  
+  if (ok) {
+    ## 3) Run MCMC
+    replicatedMCMCsamples <- try(runMCMC(cMcmc, niter = niter, 
+                                         nburnin = nburnin, thin = thin,
+                                         nchains = nchain))
+    if (inherits(replicatedMCMCsamples, "try-error")) {
+      warning("problem running MCMC for replicate")
+      ok <- FALSE
+    }
+  }
+  
+  if (ok) {
+    if (returnSamples) {
+      thisResult$samples <- replicatedMCMCsamples
+    }
+    ## 4) Calculate PPP
+    if (calcDisc) {
+      thisResult$PPP <- try(calculatePPP(
+        MCMCSamples = replicatedMCMCsamples[, colnames(origMCMCSamples)],
+        calcDiscrepanciesFun = cModelCalcDisc,
+        returnDiscrepancies = returnDiscrepancies
+      )) 
+    }
+  }
+  
+  return(thisResult)
+}

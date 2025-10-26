@@ -191,3 +191,35 @@ devianceDiscFunction_nmix <- nimbleFunction(
 )
 
 
+## deviance discrepancy function - nimbleEcology
+devianceDiscFunction_nmix_NE <- nimbleFunction(
+  contains = discrepancyFunction_BASE,
+  setup = function(model, discrepancyFunctionsArgs) {
+    
+    dataNames <- discrepancyFunctionsArgs[["dataNames"]]
+    nVisits <- discrepancyFunctionsArgs[["nVisits"]]
+    nSites <- discrepancyFunctionsArgs[["nSites"]]
+    mean_N <- discrepancyFunctionsArgs[["mean_N"]]
+    prob_detection <- discrepancyFunctionsArgs[["prob_detection"]]
+    
+  },
+  run = function() {
+    
+    ## values
+    lambda <- values(model, mean_N)[1]
+    p <- values(model, prob_detection)[1]
+    obs_y <- matrix(values(model, dataNames), ncol = nVisits)
+    
+    dev_out <- 0
+    
+    for (i in 1:nSites) { 
+      dev_out <- dev_out + -2 * 
+        dNmixture_s(obs_y[i, 1:nVisits], lambda = lambda, prob = p, 
+                    len = nVisits, log = TRUE)
+    }
+    
+    returnType(double(0)) 
+    return(dev_out)
+    
+  }
+)
